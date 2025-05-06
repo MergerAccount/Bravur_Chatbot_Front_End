@@ -202,7 +202,6 @@ textarea {
     100% { transform: scale(1); }
 }
 
-/* Basic styling for GDPR modal */
 .gdpr-modal {
   position: fixed;
   top: 0;
@@ -230,4 +229,143 @@ textarea {
   padding: 10px 20px;
   cursor: pointer;
 }
+
+.chat-header {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  margin-bottom: 15px;
+}
+
+.consent-management {
+  position: relative;
+}
+
+.manage-consent-btn {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 8px 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.manage-consent-btn:hover {
+  background-color: #e9ecef;
+  border-color: #bbb;
+}
+
+.manage-consent-btn .icon {
+  font-size: 16px;
+}
+
+.chat-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.footer-links {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-links a {
+  color: #666;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+.consent-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.consent-accepted {
+  background-color: #e8f5e9;
+  color: #388e3c;
+  border: 1px solid #c8e6c9;
+}
+
+.consent-withdrawn {
+  background-color: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #ffcdd2;
+}
+
+.gdpr-modal {
+  z-index: 2000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .chat-header {
+    padding: 8px 0;
+  }
+
+  .manage-consent-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+
+.message-item {
+  margin: 20px 20px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+}
+
+.user-msg {
+  background-color: #d1e7dd;
+}
+
+.bot-msg {
+  background-color: #cff4fc;
+}
+
+.system-msg {
+  background-color: #f8d7da;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.message-content {
+  padding: 10px;
+  background-color: white;
+  border-radius: 6px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 
