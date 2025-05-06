@@ -253,3 +253,47 @@ window.onload = function () {
   console.log("Current Session ID:", currentSessionId);
   loadMessageHistory();
 };
+
+// Check consent status on load
+document.addEventListener('DOMContentLoaded', () => {
+  const consentStatus = localStorage.getItem('gdpr_consent'); // 'accepted', 'withdrawn', or null
+  const modal = document.getElementById('gdpr-modal');
+
+  if (!consentStatus || consentStatus === 'withdrawn') {
+    // Show modal if no consent or consent withdrawn
+    modal.style.display = 'flex';
+  } else {
+    // Consent accepted, hide modal
+    modal.style.display = 'none';
+    initializeChat(); // Proceed with initializing chat
+  }
+});
+
+// Handle buttons
+document.getElementById('accept-btn').addEventListener('click', () => {
+  localStorage.setItem('gdpr_consent', 'accepted');
+  document.getElementById('gdpr-modal').style.display = 'none';
+  initializeChat();
+});
+
+document.getElementById('withdraw-btn').addEventListener('click', () => {
+  localStorage.setItem('gdpr_consent', 'withdrawn');
+  alert('Your consent has been withdrawn. You cannot use the chatbot until you accept again.');
+  // Optionally, disable chat functionality here
+});
+
+document.getElementById('view-btn').addEventListener('click', () => {
+  const status = localStorage.getItem('gdpr_consent') || 'No consent given';
+  alert(`Your current GDPR consent status: ${status}`);
+});
+
+// Function to initialize chat after consent
+function initializeChat() {
+  // Your existing onload code
+  document.getElementById("chat-box").innerHTML =
+    '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
+
+  // Remove the event listener if already added
+  // (Optional: Wrap your code in a function called here)
+}
+
