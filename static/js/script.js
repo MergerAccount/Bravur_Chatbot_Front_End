@@ -100,9 +100,36 @@ function sendMessage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
+      let container = document.createElement("div");
+      container.className = "bot-message-container";
+
       let botMsg = document.createElement("p");
       botMsg.className = "message bot-message";
-      chatBox.appendChild(botMsg);
+      botMsg.textContent = "";
+
+      let speakButton = document.createElement("button");
+      speakButton.className = "speak-btn";
+      speakButton.innerHTML = "🔊";
+      speakButton.onclick = () => {
+        fetch("/api/v1/tts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: botMsg.textContent }),
+        })
+          .then(res => res.blob())
+          .then(blob => {
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+          })
+          .catch(err => console.error("TTS error:", err));
+      };
+
+      container.appendChild(botMsg);
+      container.appendChild(speakButton);
+      chatBox.appendChild(container);
 
       function readChunk() {
         return reader.read().then(({ done, value }) => {
@@ -114,6 +141,7 @@ function sendMessage() {
               spinner.style.display = "none";
               spinner.textContent = "";
             }, 2000);
+
             chatBox.scrollTop = chatBox.scrollHeight;
             return;
           }
