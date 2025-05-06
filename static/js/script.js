@@ -269,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Handle buttons
 document.getElementById('accept-btn').addEventListener('click', () => {
   localStorage.setItem('gdpr_consent', 'accepted');
   document.getElementById('gdpr-modal').style.display = 'none';
@@ -279,7 +278,6 @@ document.getElementById('accept-btn').addEventListener('click', () => {
 document.getElementById('withdraw-btn').addEventListener('click', () => {
   localStorage.setItem('gdpr_consent', 'withdrawn');
   alert('Your consent has been withdrawn. You cannot use the chatbot until you accept again.');
-  // Optionally, disable chat functionality here
 });
 
 document.getElementById('view-btn').addEventListener('click', () => {
@@ -287,13 +285,9 @@ document.getElementById('view-btn').addEventListener('click', () => {
   alert(`Your current GDPR consent status: ${status}`);
 });
 
-// Function to initialize chat after consent
 function initializeChat() {
-  // Your existing onload code
   document.getElementById("chat-box").innerHTML =
     '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
-
-  // Remove the event listener if already added
-  // (Optional: Wrap your code in a function called here)
 }
+
 
