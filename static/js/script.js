@@ -83,8 +83,8 @@ function sendMessage() {
             return;
           }
           const chunk = decoder.decode(value);
-          botMsg.textContent += chunk;
-          return readChunk();
+            botMsg.innerHTML += chunk;
+            return readChunk();
         });
       }
 

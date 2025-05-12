@@ -54,7 +54,19 @@ h1 {
   align-self: flex-start;
   background: #e0e0e0;
   color: black;
+  white-space: normal;
+  line-height: 1.6;
+  font-family: system-ui, sans-serif;
+  border-radius: 15px;
+  padding: 10px 14px;
+  margin: 5px 0;
 }
+
+.bot-message a {
+  color: #1a0dab;
+  text-decoration: underline;
+}
+
 
 .input-container {
   display: flex;
