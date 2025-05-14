@@ -40,13 +40,14 @@ function showManageData(event) {
   event.preventDefault();
     document.getElementById("dropdown-content").innerHTML = `
     <p>We collect and use limited personal data (like cookies and usage statistics) to improve your experience, personalize content, and analyze our traffic. This may include sharing data with trusted analytics providers. We do not sell your data. You can withdraw your consent at any time, and we will delete your data from our systems upon request.</p>
+    <button>Withdraw Consent</button>
   `;
   document.getElementById("dropdown-content-container").style.display = "block";
 }
 
 function hideDropdown() {
   document.getElementById("dropdown-content-container").style.display = "none";
-  document.getElementById("dropdown-content").innerHTML = ""; // Clear content
+  document.getElementById("dropdown-content").innerHTML = "";
 }
 
 function enableEditMode() {
