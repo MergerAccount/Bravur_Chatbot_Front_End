@@ -3,34 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   <title>Bravur AI Chatbot</title>
-  <link rel="stylesheet" href="./static/css/styles.css">
 </head>
 <body>
-<!-- GDPR Consent Modal -->
-<div id="gdpr-modal" class="gdpr-modal">
-  <div class="gdpr-content">
-    <h2>GDPR Consent</h2>
-    <p>We use cookies and collect data to improve your experience. Please provide your consent to continue using the chatbot.</p>
-    <div class="gdpr-buttons">
-      <button id="accept-btn">Accept</button>
-      <button id="withdraw-btn">Withdraw Consent</button>
-      <button id="view-btn">View Consent</button>
-    </div>
-  </div>
-</div>
 <div class="chat-container">
   <h1>Bravur AI Chatbot</h1>
-  <div class="chat-header">
-    <div class="consent-management">
-      <button id="manage-consent-btn" class="manage-consent-btn">
-        <span class="icon">🔒</span> Manage Privacy & Consent
-      </button>
-    </div>
-  </div>
+  <div class="chat-header"></div>
 
   <div id="chat-box" class="chat-box"></div>
   <div class="spinner" id="spinner"></div>
+
+  <!-- Consent Chat Bubble -->
+  <div id="consent-bubble" class="consent-bubble">
+    <div class="consent-message">
+      <p>We use cookies and collect data to improve your experience. Please accept to continue using the chatbot.</p>
+      <button id="accept-consent-btn" class="accept-consent-btn">Accept</button>
+    </div>
+  </div>
   <div class="input-container">
     <button id="voice-chat-btn">🎤</button>
     <input type="text" id="user-input" placeholder="Type your question...">
@@ -62,10 +52,17 @@
   </div>
 
   <div class="chat-footer">
-    <div class="footer-links">
-      <a href="#" id="privacy-policy-link">Privacy Policy</a>
-      <a href="#" id="terms-link">Terms of Use</a>
-      <a href="#" id="manage-data-link">Manage My Data</a>
+    <div class="footer-left">
+      <a href="#" id="privacy-policy-link" onclick="showPolicy(event)">Privacy Policy</a>
+      <a href="#" id="terms-link" onclick="showTerms(event)">Terms of Use</a>
+      <a href="#" id="manage-data-link" onclick="showManageData(event)">Manage My Data</a>
+    </div>
+  </div>
+
+  <div class="dropdown-content-container" id="dropdown-content-container" style="display: none;">
+    <div class="dropdown-content" id="dropdown-content"></div>
+    <div class="footer-actions">
+      <button onclick="hideDropdown()">Hide</button>
     </div>
   </div>
 </div>
@@ -76,7 +73,7 @@
     localStorage.setItem("session_id", currentSessionId);
   }
 </script>
-<script src="./static/js/script.js"></script>
-<script src="./static/js/consent.js"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/consent.js') }}"></script>
 </body>
 </html>
