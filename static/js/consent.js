@@ -108,7 +108,6 @@
           }
           enableChat();
           updateConsentStatusDisplay(true, false);
-          addSystemMessage("Consent accepted! You can now use the chatbot.");
         } else {
           addSystemMessage(data.error || "Failed to accept consent");
         }
