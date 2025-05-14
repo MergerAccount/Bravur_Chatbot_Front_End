@@ -20,6 +20,34 @@ function showFeedback() {
   document.getElementById("feedback-container").style.display = "block";
   document.getElementById("show-feedback-btn").style.display = "none";
 }
+function showPolicy(event) {
+  event.preventDefault();
+    document.getElementById("dropdown-content").innerHTML = `
+    <p>By using this website, you agree to use it for lawful purposes only and in a way that does not infringe on the rights of others. We reserve the right to modify content, suspend access, or terminate services without prior notice. All content on this site is owned or licensed by us. You may not reproduce or redistribute it without permission of this site is at your own risk. We are not liable for any damages resulting from its use.</p>
+  `;
+  document.getElementById("dropdown-content-container").style.display = "block";
+}
+
+function showTerms(event) {
+  event.preventDefault();
+    document.getElementById("dropdown-content").innerHTML = `
+    <p>If you choose to withdraw your consent, we’ll delete all associated data from our systems. This means we won’t be able to provide you with a personalized experience or retain any preferences you’ve set.</p>
+  `;
+  document.getElementById("dropdown-content-container").style.display = "block";
+}
+
+function showManageData(event) {
+  event.preventDefault();
+    document.getElementById("dropdown-content").innerHTML = `
+    <p>We collect and use limited personal data (like cookies and usage statistics) to improve your experience, personalize content, and analyze our traffic. This may include sharing data with trusted analytics providers. We do not sell your data. You can withdraw your consent at any time, and we will delete your data from our systems upon request.</p>
+  `;
+  document.getElementById("dropdown-content-container").style.display = "block";
+}
+
+function hideDropdown() {
+  document.getElementById("dropdown-content-container").style.display = "none";
+  document.getElementById("dropdown-content").innerHTML = ""; // Clear content
+}
 
 function enableEditMode() {
   document.getElementById("feedback-comment").disabled = false;
@@ -127,31 +155,9 @@ function submitFeedback() {
       commentBox.disabled = true;
       document.getElementById("edit-feedback-btn").style.display = "block";
     })
-    .catch(err => {
+    .catch(() => {
       messageDiv.innerText = "Feedback failed. Try again later.";
       messageDiv.style.color = "red";
-    });
-}
-
-function loadMessageHistory() {
-  fetch(`/api/v1/history?session_id=${currentSessionId}`)
-    .then(res => res.json())
-    .then(data => {
-      const chatBox = document.getElementById("chat-box");
-      data.messages.forEach(msg => {
-        const p = document.createElement("p");
-        p.className = "message";
-        if (msg.type === "user") {
-          p.classList.add("user-message");
-        } else if (msg.type === "bot") {
-          p.classList.add("bot-message");
-        } else {
-          p.classList.add("system-message");
-        }
-        p.textContent = msg.content;
-        chatBox.appendChild(p);
-      });
-      chatBox.scrollTop = chatBox.scrollHeight;
     });
 }
 
@@ -182,8 +188,7 @@ document.getElementById("voice-chat-btn").addEventListener("click", function() {
 
     // Handle results
     recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById("user-input").value = transcript;
+        document.getElementById("user-input").value = event.results[0][0].transcript;
 
         // Small delay before sending to show the recognized text to the user
         setTimeout(() => {
@@ -240,9 +245,8 @@ function stopSpeechRecognition() {
 }
 
 window.onload = function () {
-  document.getElementById("chat-box").innerHTML =
-    '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
-
+    const chatBox = document.getElementById("chat-box");
+    chatBox.innerHTML += '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
   document.getElementById("user-input").addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -251,43 +255,4 @@ window.onload = function () {
   });
 
   console.log("Current Session ID:", currentSessionId);
-  loadMessageHistory();
 };
-
-// Check consent status on load
-document.addEventListener('DOMContentLoaded', () => {
-  const consentStatus = localStorage.getItem('gdpr_consent'); // 'accepted', 'withdrawn', or null
-  const modal = document.getElementById('gdpr-modal');
-
-  if (!consentStatus || consentStatus === 'withdrawn') {
-    // Show modal if no consent or consent withdrawn
-    modal.style.display = 'flex';
-  } else {
-    // Consent accepted, hide modal
-    modal.style.display = 'none';
-    initializeChat(); // Proceed with initializing chat
-  }
-});
-
-document.getElementById('accept-btn').addEventListener('click', () => {
-  localStorage.setItem('gdpr_consent', 'accepted');
-  document.getElementById('gdpr-modal').style.display = 'none';
-  initializeChat();
-});
-
-document.getElementById('withdraw-btn').addEventListener('click', () => {
-  localStorage.setItem('gdpr_consent', 'withdrawn');
-  alert('Your consent has been withdrawn. You cannot use the chatbot until you accept again.');
-});
-
-document.getElementById('view-btn').addEventListener('click', () => {
-  const status = localStorage.getItem('gdpr_consent') || 'No consent given';
-  alert(`Your current GDPR consent status: ${status}`);
-});
-
-function initializeChat() {
-  document.getElementById("chat-box").innerHTML =
-    '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
-}
-
-
