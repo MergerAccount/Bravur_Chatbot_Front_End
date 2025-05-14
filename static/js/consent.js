@@ -13,7 +13,6 @@
     const consentBubble = document.getElementById('consent-bubble');
     const acceptConsentBtn = document.getElementById("accept-consent-btn");
 
-
     if (inputContainer) {
     inputContainer.style.pointerEvents = "none";
     inputContainer.style.opacity = "0.5";
@@ -119,6 +118,47 @@
         addSystemMessage("Error accepting consent. Please try again.");
       });
   }
+
+  function handleWithdrawConsent(){
+      if(!sessionId){
+          addSystemMessage("No session ID available. Please refresh the page.")
+          return;
+      }
+
+      fetch("/api/v1/consent/withdraw", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ session_id: sessionId })
+  })
+      .then(response => response.json())
+    .then(data => {
+      console.log("Withdraw consent response:", data);
+
+      if (data.success) {
+        // Disable chat and show consent bubble again
+        if (inputContainer) {
+          inputContainer.style.pointerEvents = "none";
+          inputContainer.style.opacity = "0.5";
+        }
+        if (consentBubble) {
+          consentBubble.style.display = "block";
+        }
+        updateConsentStatusDisplay(false, true);
+        addSystemMessage("Consent withdrawn. Chat disabled and data deleted.");
+      } else {
+        addSystemMessage(data.error || "Failed to withdraw consent");
+      }
+    })
+    .catch(error => {
+      console.error("Error withdrawing consent:", error);
+      addSystemMessage("Error withdrawing consent. Please try again.");
+    });
+  }
+
+  //Expose handleWithdrawConsent globally
+      window.handleWithdrawConsent = handleWithdrawConsent;
 
   if (acceptConsentBtn) {
     acceptConsentBtn.addEventListener("click", handleAcceptConsent);
