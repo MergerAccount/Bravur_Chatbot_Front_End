@@ -1,6 +1,7 @@
 let selectedRating = null;
 let recognition = null;
 let isListening = false;
+let currentAudio = null; // Added variable to track audio playback
 
 // Highlight selected smiley and store the rating value
 function selectSmiley(rating) {
@@ -76,6 +77,13 @@ function sendMessage() {
       speakButton.className = "speak-btn";
       speakButton.innerHTML = "🔊";
       speakButton.onclick = () => {
+        // If there's already audio playing, stop it
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0; // Reset to beginning
+          // No need to set to null here as we'll replace it below
+        }
+
         fetch("/api/v1/tts", {
           method: "POST",
           headers: {
@@ -86,8 +94,13 @@ function sendMessage() {
           .then(res => res.blob())
           .then(blob => {
             const audioUrl = URL.createObjectURL(blob);
-            const audio = new Audio(audioUrl);
-            audio.play();
+            currentAudio = new Audio(audioUrl); // Assign to our global variable
+            currentAudio.play();
+
+            // Optional: clean up when audio finishes playing
+            currentAudio.onended = function() {
+              URL.revokeObjectURL(audioUrl); // Free up memory
+            };
           })
           .catch(err => console.error("TTS error:", err));
       };
@@ -173,11 +186,58 @@ function loadMessageHistory() {
           p.classList.add("user-message");
         } else if (msg.type === "bot") {
           p.classList.add("bot-message");
+
+          // For bot messages in history, add speak button
+          if (msg.content) {
+            const container = document.createElement("div");
+            container.className = "bot-message-container";
+
+            p.className = "message bot-message";
+
+            const speakButton = document.createElement("button");
+            speakButton.className = "speak-btn";
+            speakButton.innerHTML = "🔊";
+            speakButton.onclick = () => {
+              // If there's already audio playing, stop it
+              if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0; // Reset to beginning
+              }
+
+              fetch("/api/v1/tts", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ text: msg.content }),
+              })
+                .then(res => res.blob())
+                .then(blob => {
+                  const audioUrl = URL.createObjectURL(blob);
+                  currentAudio = new Audio(audioUrl);
+                  currentAudio.play();
+
+                  // Optional: clean up when audio finishes playing
+                  currentAudio.onended = function() {
+                    URL.revokeObjectURL(audioUrl); // Free up memory
+                  };
+                })
+                .catch(err => console.error("TTS error:", err));
+            };
+
+            container.appendChild(p);
+            container.appendChild(speakButton);
+            chatBox.appendChild(container);
+            return; // Skip the normal append for bot messages
+          }
         } else {
           p.classList.add("system-message");
         }
-        p.textContent = msg.content;
-        chatBox.appendChild(p);
+
+        // Only append for non-bot messages (bot messages are handled above)
+        if (msg.type !== "bot" || !msg.content) {
+          chatBox.appendChild(p);
+        }
       });
       chatBox.scrollTop = chatBox.scrollHeight;
     });
