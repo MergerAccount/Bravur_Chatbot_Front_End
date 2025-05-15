@@ -80,16 +80,18 @@ function sendMessage() {
         // If there's already audio playing, stop it
         if (currentAudio) {
           currentAudio.pause();
-          currentAudio.currentTime = 0; // Reset to beginning
-          // No need to set to null here as we'll replace it below
+          currentAudio.currentTime = 0;
         }
+
+        // Detect if the text is likely Dutch
+        const isLikelyDutch = detectDutchLanguage(botMsg.textContent);
 
         fetch("/api/v1/tts", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ text: botMsg.textContent }),
+          body: JSON.stringify({ text: botMsg.textContent, language: isLikelyDutch ? "nl-NL" : "en-US" }),
         })
           .then(res => res.blob())
           .then(blob => {
@@ -108,6 +110,25 @@ function sendMessage() {
       container.appendChild(botMsg);
       container.appendChild(speakButton);
       chatBox.appendChild(container);
+
+      function detectDutchLanguage(text) {
+      // This is a simple detection based on common Dutch words
+         const dutchWords = ['de', 'het', 'een', 'ik', 'jij', 'hij', 'zij', 'wij', 'jullie',
+                                      'en', 'of', 'maar', 'want', 'dus', 'omdat', 'als', 'dan',
+                                      'hallo', 'goedemorgen', 'goedemiddag', 'goedenavond', 'doei'];
+
+         const words = text.toLowerCase().split(/\s+/);
+         let dutchWordCount = 0;
+
+         for (const word of words) {
+             if (dutchWords.includes(word)) {
+                 dutchWordCount++;
+             }
+         }
+
+         // If more than 10% of words are Dutch, consider it Dutch
+         return dutchWordCount / words.length > 0.1;
+      }
 
       function readChunk() {
         return reader.read().then(({ done, value }) => {
@@ -187,7 +208,6 @@ function loadMessageHistory() {
         } else if (msg.type === "bot") {
           p.classList.add("bot-message");
 
-          // For bot messages in history, add speak button
           if (msg.content) {
             const container = document.createElement("div");
             container.className = "bot-message-container";
@@ -198,10 +218,9 @@ function loadMessageHistory() {
             speakButton.className = "speak-btn";
             speakButton.innerHTML = "🔊";
             speakButton.onclick = () => {
-              // If there's already audio playing, stop it
               if (currentAudio) {
                 currentAudio.pause();
-                currentAudio.currentTime = 0; // Reset to beginning
+                currentAudio.currentTime = 0;
               }
 
               fetch("/api/v1/tts", {
@@ -217,9 +236,8 @@ function loadMessageHistory() {
                   currentAudio = new Audio(audioUrl);
                   currentAudio.play();
 
-                  // Optional: clean up when audio finishes playing
                   currentAudio.onended = function() {
-                    URL.revokeObjectURL(audioUrl); // Free up memory
+                    URL.revokeObjectURL(audioUrl);
                   };
                 })
                 .catch(err => console.error("TTS error:", err));
@@ -228,13 +246,12 @@ function loadMessageHistory() {
             container.appendChild(p);
             container.appendChild(speakButton);
             chatBox.appendChild(container);
-            return; // Skip the normal append for bot messages
+            return;
           }
         } else {
           p.classList.add("system-message");
         }
 
-        // Only append for non-bot messages (bot messages are handled above)
         if (msg.type !== "bot" || !msg.content) {
           chatBox.appendChild(p);
         }
@@ -244,74 +261,51 @@ function loadMessageHistory() {
 }
 
 document.getElementById("voice-chat-btn").addEventListener("click", function() {
-    // Check if browser supports the Web Speech API
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        alert("Your browser doesn't support speech recognition. Try Chrome or Edge.");
-        return;
-    }
-
     if (isListening) {
-        // If already listening, stop it
         stopSpeechRecognition();
         return;
     }
 
-    // Initialize speech recognition
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    // Start visual feedback
     isListening = true;
     const voiceChatBtn = document.getElementById("voice-chat-btn");
     voiceChatBtn.textContent = "🎙️ Listening...";
     voiceChatBtn.classList.add("listening");
 
-    // Handle results
-    recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById("user-input").value = transcript;
+    const languageSelect = document.getElementById("language-select");
+    const selectedLanguage = languageSelect ? languageSelect.value : "en-US";
 
-        // Small delay before sending to show the recognized text to the user
-        setTimeout(() => {
-            sendMessage();
-        }, 500);
-    };
+    fetch("/api/v1/stt", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            language: selectedLanguage
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === "success" && result.text) {
+            document.getElementById("user-input").value = result.text;
 
-    // Handle end of speech recognition
-    recognition.onend = function() {
-        stopSpeechRecognition();
-    };
-
-    // Handle errors
-    recognition.onerror = function(event) {
-        console.error("Speech recognition error:", event.error);
-
-        let errorMessage = "Speech recognition error. ";
-        if (event.error === 'not-allowed') {
-            errorMessage += "Please allow microphone access.";
-        } else if (event.error === 'no-speech') {
-            errorMessage += "No speech detected. Try again.";
+            setTimeout(() => {
+                sendMessage();
+            }, 500);
         } else {
-            errorMessage += "Try again later.";
+            console.error("Speech recognition failed:", result.message || "Unknown error");
+            alert("Speech recognition failed: " + (result.message || "Unknown error"));
         }
-
-        alert(errorMessage);
+    })
+    .catch(error => {
+        console.error("Speech recognition error:", error);
+        alert("Speech recognition error. Please try again.");
+    })
+    .finally(() => {
+        // Always stop the recognition UI feedback when done
         stopSpeechRecognition();
-    };
-
-    // Start recognition
-    try {
-        recognition.start();
-    } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        alert("Could not start speech recognition. Try again.");
-        stopSpeechRecognition();
-    }
+    });
 });
 
-// Helper function to stop speech recognition and reset UI
 function stopSpeechRecognition() {
     isListening = false;
     const voiceChatBtn = document.getElementById("voice-chat-btn");
@@ -322,7 +316,6 @@ function stopSpeechRecognition() {
         try {
             recognition.stop();
         } catch (e) {
-            // Ignore errors when stopping
         }
     }
 }
