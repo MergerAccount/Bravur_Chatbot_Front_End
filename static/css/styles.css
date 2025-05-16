@@ -451,3 +451,47 @@ textarea {
   transform: scale(0.95);
 }
 
+#bot-is-typing-indicator {
+  align-self: flex-start; /* Aligns it like other bot messages */
+  background: #e0e0e0;    /* Matches your .bot-message background */
+  color: black;           /* Matches your .bot-message color */
+  max-width: fit-content; /* Make the bubble only as wide as the dots */
+  padding: 10px 15px;     /* Matches your .message padding */
+  border-radius: 20px;    /* Matches your .message border-radius */
+  margin-bottom: 10px;    /* Matches your .chat-box gap (approximately) */
+  /* display: none; is set inline in HTML initially, JS will toggle to 'flex' */
+}
+
+#bot-is-typing-indicator .typing-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 2px;
+  background-color: #8e8e93; /* Or use 'black' to match bot text */
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: typing-ellipsis 1.4s infinite;
+}
+
+#bot-is-typing-indicator .typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+#bot-is-typing-indicator .typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+#bot-is-typing-indicator .typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-ellipsis {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
