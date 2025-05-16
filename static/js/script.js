@@ -21,6 +21,41 @@ function showFeedback() {
   document.getElementById("feedback-container").style.display = "block";
   document.getElementById("show-feedback-btn").style.display = "none";
 }
+function showPolicy(event) {
+  event.preventDefault();
+    document.getElementById("dropdown-content").innerHTML = `
+    <p>By using this website, you agree to use it for lawful purposes only and in a way that does not infringe on the rights of others. We reserve the right to modify content, suspend access, or terminate services without prior notice. All content on this site is owned or licensed by us. You may not reproduce or redistribute it without permission of this site is at your own risk. We are not liable for any damages resulting from its use.</p>
+  `;
+  document.getElementById("dropdown-content-container").style.display = "block";
+}
+
+function showTerms(event) {
+  event.preventDefault();
+    document.getElementById("dropdown-content").innerHTML = `
+    <p>If you choose to withdraw your consent, we’ll delete all associated data from our systems. This means we won’t be able to provide you with a personalized experience or retain any preferences you’ve set.</p>
+  `;
+  document.getElementById("dropdown-content-container").style.display = "block";
+}
+
+function showManageData(event) {
+  event.preventDefault();
+    document.getElementById("dropdown-content").innerHTML = `
+    <p>We collect and use limited personal data (like cookies and usage statistics) to improve your experience, personalize content, and analyze our traffic. This may include sharing data with trusted analytics providers. We do not sell your data. You can withdraw your consent at any time, and we will delete your data from our systems upon request.</p>
+    <button class="withdraw-btn" id="withdraw-btn">Withdraw Consent</button>
+  `;
+  document.getElementById("dropdown-content-container").style.display = "block";
+
+  const withdrawBtn = document.getElementById("withdraw-btn");
+
+  if(withdrawBtn){
+      withdrawBtn.addEventListener("click", window.handleWithdrawConsent);
+  }
+}
+
+function hideDropdown() {
+  document.getElementById("dropdown-content-container").style.display = "none";
+  document.getElementById("dropdown-content").innerHTML = "";
+}
 
 function enableEditMode() {
   document.getElementById("feedback-comment").disabled = false;
@@ -189,7 +224,7 @@ function submitFeedback() {
       commentBox.disabled = true;
       document.getElementById("edit-feedback-btn").style.display = "block";
     })
-    .catch(err => {
+    .catch(() => {
       messageDiv.innerText = "Feedback failed. Try again later.";
       messageDiv.style.color = "red";
     });
@@ -321,9 +356,9 @@ function stopSpeechRecognition() {
 }
 
 window.onload = function () {
-  document.getElementById("chat-box").innerHTML =
-    '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
-
+    const chatBox = document.getElementById("chat-box");
+    chatBox.innerHTML += '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
+  
   document.getElementById("user-input").addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
       event.preventDefault();
