@@ -92,14 +92,6 @@ h1 {
   padding: 10px;
 }
 
-/*
-.spinner::after {
-  content: "\23F3 Typing...";
-  font-size: 14px;
-  color: gray;
-}
-*/
-
 .session-info {
   text-align: center;
   font-size: 12px;
@@ -201,3 +193,246 @@ textarea {
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
+
+.gdpr-buttons button {
+  margin: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  margin-bottom: 15px;
+}
+
+.chat-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.footer-left {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-left a {
+  color: #666;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.footer-left a:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+.consent-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .chat-header {
+    padding: 8px 0;
+  }
+
+  .manage-consent-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .footer-left {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+
+.gdpr-content {
+  background: #fff;
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.gdpr-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.gdpr-content a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.gdpr-content a:hover {
+  text-decoration: underline;
+}
+
+.gdpr-buttons button {
+  margin: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.gdpr-buttons button:hover {
+  background: #0056b3;
+}
+.dropdown-content-container {
+  display: none;
+  padding: 10px;
+  background: #fff;
+  margin-top: 5px;
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.dropdown-content p {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.footer-actions {
+  text-align: right;
+}
+
+.footer-actions button {
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+}
+
+.footer-actions button:hover {
+  background-color: #0056b3;
+}
+
+.chat-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.footer-left {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 25px;
+}
+
+.footer-left a {
+  color: #666;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+  margin: 5px 0;
+}
+
+.footer-left a:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+/* Consent Bubble Styles */
+.consent-bubble {
+  position: relative;
+  top: 50%;
+  display: none;
+  padding: 0 20px;
+  background: #fafafa;
+}
+
+.consent-message {
+  display: flex;
+  background-color: #f0f0f0;
+  border-radius: 10px 10px 0px 0px;
+  padding: 15px;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: -4px;
+  flex: auto;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.consent-message p {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.accept-consent-btn {
+  background-color: #007bff;
+  margin: 0px 20px;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.accept-consent-btn:hover {
+  background-color: #007bff;
+}
+
+.accept-consent-btn:active {
+  background-color: #007bff;
+}
+
+.withdraw-btn {
+  background-color: #ff0000;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transitions */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.withdraw-btn:hover {
+  background-color: #cc0000;
+  transform: scale(1.05);
+}
+
+.withdraw-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.3);
+}
+
+.withdraw-btn:active {
+  transform: scale(0.95);
+}
+
