@@ -72,8 +72,16 @@ function sendMessage() {
   let chatBox = document.getElementById("chat-box");
   let spinner = document.getElementById("spinner");
 
+  const botTypingIndicator = document.getElementById("bot-is-typing-indicator");
+
   chatBox.innerHTML += `<p class="message user-message">${userInput}</p>`;
   userInputField.value = "";
+
+  if (botTypingIndicator) {
+    botTypingIndicator.style.display = "flex"; // Use 'flex' to align dots properly
+    chatBox.appendChild(botTypingIndicator); // Ensure it's the last child
+  }
+  chatBox.scrollTop = chatBox.scrollHeight;
 
   spinner.style.display = "block";
   let startTime = performance.now();
@@ -90,6 +98,8 @@ function sendMessage() {
     "user_input": userInput,
     "session_id": currentSessionId
   });
+
+  let firstChunkForNewIndicator = true;
 
   fetch("/api/v1/chat", {
     method: "POST",
@@ -167,6 +177,18 @@ function sendMessage() {
 
       function readChunk() {
         return reader.read().then(({ done, value }) => {
+
+            if (firstChunkForNewIndicator && !done && value) {
+            if (botTypingIndicator) {
+              botTypingIndicator.style.display = "none"; // Hide the dots
+            }
+            // Now add the actual bot message container to the chatBox
+            container.appendChild(botMsg);
+            container.appendChild(speakButton);
+            chatBox.appendChild(container);
+            firstChunkForNewIndicator = false; // Only do this once
+          }
+
           if (done) {
             clearInterval(timerInterval);
             const finalTime = (performance.now() - startTime) / 1000;
@@ -175,6 +197,14 @@ function sendMessage() {
               spinner.style.display = "none";
               spinner.textContent = "";
             }, 2000);
+
+            if (botTypingIndicator && botTypingIndicator.style.display !== "none") {
+                botTypingIndicator.style.display = "none";
+            }
+            // If the bot message element was added but received no content, remove it
+            if (container.parentNode === chatBox && botMsg.textContent === "") {
+                chatBox.removeChild(container);
+            }
 
             chatBox.scrollTop = chatBox.scrollHeight;
             return;
