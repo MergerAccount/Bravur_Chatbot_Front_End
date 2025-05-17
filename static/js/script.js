@@ -1,6 +1,7 @@
 let selectedRating = null;
 let recognition = null;
 let isListening = false;
+let currentAudio = null; // Added variable to track audio playback
 
 // Highlight selected smiley and store the rating value
 function selectSmiley(rating) {
@@ -100,9 +101,69 @@ function sendMessage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
+      let container = document.createElement("div");
+      container.className = "bot-message-container";
+
       let botMsg = document.createElement("p");
       botMsg.className = "message bot-message";
-      chatBox.appendChild(botMsg);
+      botMsg.textContent = "";
+
+      let speakButton = document.createElement("button");
+      speakButton.className = "speak-btn";
+      speakButton.innerHTML = "🔊";
+      speakButton.onclick = () => {
+        // If there's already audio playing, stop it
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+
+        // Detect if the text is likely Dutch
+        const isLikelyDutch = detectDutchLanguage(botMsg.textContent);
+
+        fetch("/api/v1/tts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: botMsg.textContent, language: isLikelyDutch ? "nl-NL" : "en-US" }),
+        })
+          .then(res => res.blob())
+          .then(blob => {
+            const audioUrl = URL.createObjectURL(blob);
+            currentAudio = new Audio(audioUrl); // Assign to our global variable
+            currentAudio.play();
+
+            // Optional: clean up when audio finishes playing
+            currentAudio.onended = function() {
+              URL.revokeObjectURL(audioUrl); // Free up memory
+            };
+          })
+          .catch(err => console.error("TTS error:", err));
+      };
+
+      container.appendChild(botMsg);
+      container.appendChild(speakButton);
+      chatBox.appendChild(container);
+
+      function detectDutchLanguage(text) {
+      // This is a simple detection based on common Dutch words
+         const dutchWords = ['de', 'het', 'een', 'ik', 'jij', 'hij', 'zij', 'wij', 'jullie',
+                                      'en', 'of', 'maar', 'want', 'dus', 'omdat', 'als', 'dan',
+                                      'hallo', 'goedemorgen', 'goedemiddag', 'goedenavond', 'doei'];
+
+         const words = text.toLowerCase().split(/\s+/);
+         let dutchWordCount = 0;
+
+         for (const word of words) {
+             if (dutchWords.includes(word)) {
+                 dutchWordCount++;
+             }
+         }
+
+         // If more than 10% of words are Dutch, consider it Dutch
+         return dutchWordCount / words.length > 0.1;
+      }
 
       function readChunk() {
         return reader.read().then(({ done, value }) => {
@@ -114,6 +175,7 @@ function sendMessage() {
               spinner.style.display = "none";
               spinner.textContent = "";
             }, 2000);
+
             chatBox.scrollTop = chatBox.scrollHeight;
             return;
           }
@@ -168,74 +230,117 @@ function submitFeedback() {
     });
 }
 
-document.getElementById("voice-chat-btn").addEventListener("click", function() {
-    // Check if browser supports the Web Speech API
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        alert("Your browser doesn't support speech recognition. Try Chrome or Edge.");
-        return;
-    }
+function loadMessageHistory() {
+  fetch(`/api/v1/history?session_id=${currentSessionId}`)
+    .then(res => res.json())
+    .then(data => {
+      const chatBox = document.getElementById("chat-box");
+      data.messages.forEach(msg => {
+        const p = document.createElement("p");
+        p.className = "message";
+        if (msg.type === "user") {
+          p.classList.add("user-message");
+        } else if (msg.type === "bot") {
+          p.classList.add("bot-message");
 
+          if (msg.content) {
+            const container = document.createElement("div");
+            container.className = "bot-message-container";
+
+            p.className = "message bot-message";
+
+            const speakButton = document.createElement("button");
+            speakButton.className = "speak-btn";
+            speakButton.innerHTML = "🔊";
+            speakButton.onclick = () => {
+              if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+              }
+
+              fetch("/api/v1/tts", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ text: msg.content }),
+              })
+                .then(res => res.blob())
+                .then(blob => {
+                  const audioUrl = URL.createObjectURL(blob);
+                  currentAudio = new Audio(audioUrl);
+                  currentAudio.play();
+
+                  currentAudio.onended = function() {
+                    URL.revokeObjectURL(audioUrl);
+                  };
+                })
+                .catch(err => console.error("TTS error:", err));
+            };
+
+            container.appendChild(p);
+            container.appendChild(speakButton);
+            chatBox.appendChild(container);
+            return;
+          }
+        } else {
+          p.classList.add("system-message");
+        }
+
+        if (msg.type !== "bot" || !msg.content) {
+          chatBox.appendChild(p);
+        }
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+}
+
+document.getElementById("voice-chat-btn").addEventListener("click", function() {
     if (isListening) {
-        // If already listening, stop it
         stopSpeechRecognition();
         return;
     }
 
-    // Initialize speech recognition
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    // Start visual feedback
     isListening = true;
     const voiceChatBtn = document.getElementById("voice-chat-btn");
     voiceChatBtn.textContent = "🎙️ Listening...";
     voiceChatBtn.classList.add("listening");
 
-    // Handle results
-    recognition.onresult = function(event) {
-        document.getElementById("user-input").value = event.results[0][0].transcript;
+    const languageSelect = document.getElementById("language-select");
+    const selectedLanguage = languageSelect ? languageSelect.value : "en-US";
 
-        // Small delay before sending to show the recognized text to the user
-        setTimeout(() => {
-            sendMessage();
-        }, 500);
-    };
+    fetch("/api/v1/stt", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            language: selectedLanguage
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === "success" && result.text) {
+            document.getElementById("user-input").value = result.text;
 
-    // Handle end of speech recognition
-    recognition.onend = function() {
-        stopSpeechRecognition();
-    };
-
-    // Handle errors
-    recognition.onerror = function(event) {
-        console.error("Speech recognition error:", event.error);
-
-        let errorMessage = "Speech recognition error. ";
-        if (event.error === 'not-allowed') {
-            errorMessage += "Please allow microphone access.";
-        } else if (event.error === 'no-speech') {
-            errorMessage += "No speech detected. Try again.";
+            setTimeout(() => {
+                sendMessage();
+            }, 500);
         } else {
-            errorMessage += "Try again later.";
+            console.error("Speech recognition failed:", result.message || "Unknown error");
+            alert("Speech recognition failed: " + (result.message || "Unknown error"));
         }
-
-        alert(errorMessage);
+    })
+    .catch(error => {
+        console.error("Speech recognition error:", error);
+        alert("Speech recognition error. Please try again.");
+    })
+    .finally(() => {
+        // Always stop the recognition UI feedback when done
         stopSpeechRecognition();
-    };
-
-    // Start recognition
-    try {
-        recognition.start();
-    } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        alert("Could not start speech recognition. Try again.");
-        stopSpeechRecognition();
-    }
+    });
 });
 
-// Helper function to stop speech recognition and reset UI
 function stopSpeechRecognition() {
     isListening = false;
     const voiceChatBtn = document.getElementById("voice-chat-btn");
@@ -246,7 +351,6 @@ function stopSpeechRecognition() {
         try {
             recognition.stop();
         } catch (e) {
-            // Ignore errors when stopping
         }
     }
 }
@@ -254,6 +358,7 @@ function stopSpeechRecognition() {
 window.onload = function () {
     const chatBox = document.getElementById("chat-box");
     chatBox.innerHTML += '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
+  
   document.getElementById("user-input").addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -262,4 +367,5 @@ window.onload = function () {
   });
 
   console.log("Current Session ID:", currentSessionId);
+  loadMessageHistory();
 };
