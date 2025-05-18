@@ -451,3 +451,33 @@ textarea {
   transform: scale(0.95);
 }
 
+/* Language Toggle Button Styles */
+.language-toggle {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  padding: 10px;
+  margin-top: -35px;
+}
+
+.language-btn {
+  border-radius: 15px;
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+}
+
+.language-btn.active {
+  background-color: #0080ff;
+  color: white;
+  border-color: #0080ff;
+}
+
+.language-btn.inactive {
+  background-color: white;
+  color: #333;
+}
+
