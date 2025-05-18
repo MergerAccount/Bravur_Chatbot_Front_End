@@ -369,3 +369,30 @@ window.onload = function () {
   console.log("Current Session ID:", currentSessionId);
   loadMessageHistory();
 };
+
+const engBtn = document.getElementById('eng-btn');
+const nlBtn = document.getElementById('nl-btn');
+
+engBtn.classList.remove('active');
+engBtn.classList.add('inactive');
+nlBtn.classList.remove('active');
+nlBtn.classList.add('inactive');
+
+
+engBtn.addEventListener('click', () => {
+  if (!engBtn.classList.contains('active')) {
+    engBtn.classList.add('active');
+    engBtn.classList.remove('inactive');
+    nlBtn.classList.add('inactive');
+    nlBtn.classList.remove('active');
+  }
+});
+
+nlBtn.addEventListener('click', () => {
+  if (!nlBtn.classList.contains('active')) {
+    nlBtn.classList.add('active');
+    nlBtn.classList.remove('inactive');
+    engBtn.classList.add('inactive');
+    engBtn.classList.remove('active');
+  }
+});
