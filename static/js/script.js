@@ -1,7 +1,10 @@
 let selectedRating = null;
 let recognition = null;
 let isListening = false;
-let currentAudio = null; // Added variable to track audio playback
+let currentAudio = null;
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
 
 // Highlight selected smiley and store the rating value
 function selectSmiley(rating) {
@@ -353,6 +356,70 @@ function stopSpeechRecognition() {
         } catch (e) {
         }
     }
+}
+
+const stsButton = document.getElementById("sts-btn");
+
+stsButton.addEventListener("click", () => {
+    if (!isRecording) {
+        startRecording();
+    } else {
+        stopRecording();
+    }
+});
+
+async function startRecording() {
+    const spinner = document.getElementById("spinner");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'input.wav');
+
+        spinner.style.display = "block";
+
+        setTimeout(() => {
+            fetch('/api/v1/sts', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async response => {
+                if (response.ok) {
+                    const audioUrl = URL.createObjectURL(await response.blob());
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+
+                    audio.onended = () => {
+                        spinner.style.display = "none";
+                    };
+                } else {
+                    console.error("Speech-to-speech failed.");
+                    spinner.style.display = "none";
+                }
+            })
+            .catch(err => {
+                console.error("Fetch failed:", err);
+                spinner.style.display = "none";
+            });
+        }, 100);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    stsButton.innerText = "Start Talking";
+}
+
+function stopRecording() {
+    mediaRecorder.stop();
+    isRecording = false;
+    stsButton.innerText = "Stop Recording";
 }
 
 window.onload = function () {
