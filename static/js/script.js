@@ -373,11 +373,10 @@ window.onload = function () {
 const engBtn = document.getElementById('eng-btn');
 const nlBtn = document.getElementById('nl-btn');
 
-engBtn.classList.remove('active');
+nlBtn.classList.add('active');
+nlBtn.classList.remove('inactive');
 engBtn.classList.add('inactive');
-nlBtn.classList.remove('active');
-nlBtn.classList.add('inactive');
-
+engBtn.classList.remove('active');
 
 engBtn.addEventListener('click', () => {
   if (!engBtn.classList.contains('active')) {
