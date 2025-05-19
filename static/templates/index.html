@@ -13,8 +13,8 @@
 
     <div class="language-toggle-container">
       <div class="language-toggle">
-        <button id="eng-btn" class="language-btn active">ENG</button>
-        <button id="nl-btn" class="language-btn inactive">NL</button>
+        <button id="eng-btn" class="language-btn active" value="nl-NL">ENG</button>
+        <button id="nl-btn" class="language-btn inactive" value="en-US">NL</button>
       </div>
     </div>
 
@@ -30,10 +30,6 @@
   </div>
   <div class="input-container">
     <button id="voice-chat-btn">🎤</button>
-    <select id="language-select">
-        <option value="nl-NL">NL</option>
-        <option value="en-US">EN</option>
-    </select>
     <input type="text" id="user-input" placeholder="Type your question...">
     <button onclick="sendMessage()">Send</button>
   </div>
