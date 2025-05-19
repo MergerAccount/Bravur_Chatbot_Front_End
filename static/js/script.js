@@ -1,7 +1,9 @@
 let selectedRating = null;
 let recognition = null;
 let isListening = false;
-let currentAudio = null; // Added variable to track audio playback
+let currentAudio = null;
+
+let selectedLanguage = "nl-NL";
 
 // Highlight selected smiley and store the rating value
 function selectSmiley(rating) {
@@ -307,7 +309,11 @@ document.getElementById("voice-chat-btn").addEventListener("click", function() {
     voiceChatBtn.classList.add("listening");
 
     const languageSelect = document.getElementById("language-select");
-    const selectedLanguage = languageSelect ? languageSelect.value : "en-US";
+    const selectedLanguage = languageSelect ? languageSelect.value : "nl_NL";
+
+    console.log("Using language for speech recognition:", selectedLanguage);
+
+     const languageToSend = selectedLanguage === "nl-NL" ? "nl-NL" : "en-US";
 
     fetch("/api/v1/stt", {
         method: "POST",
@@ -366,32 +372,43 @@ window.onload = function () {
     }
   });
 
+  initializeLanguageButtons()
+
   console.log("Current Session ID:", currentSessionId);
   loadMessageHistory();
+
 };
 
-const engBtn = document.getElementById('eng-btn');
-const nlBtn = document.getElementById('nl-btn');
+function initializeLanguageButtons() {
+    const engBtn = document.getElementById('eng-btn');
+    const nlBtn = document.getElementById('nl-btn');
 
-nlBtn.classList.add('active');
-nlBtn.classList.remove('inactive');
-engBtn.classList.add('inactive');
-engBtn.classList.remove('active');
-
-engBtn.addEventListener('click', () => {
-  if (!engBtn.classList.contains('active')) {
-    engBtn.classList.add('active');
-    engBtn.classList.remove('inactive');
-    nlBtn.classList.add('inactive');
-    nlBtn.classList.remove('active');
-  }
-});
-
-nlBtn.addEventListener('click', () => {
-  if (!nlBtn.classList.contains('active')) {
     nlBtn.classList.add('active');
     nlBtn.classList.remove('inactive');
     engBtn.classList.add('inactive');
     engBtn.classList.remove('active');
-  }
-});
+
+    selectedLanguage = "nl-NL";
+
+    engBtn.addEventListener('click', () => {
+        if (!engBtn.classList.contains('active')) {
+            engBtn.classList.add('active');
+            engBtn.classList.remove('inactive');
+            nlBtn.classList.add('inactive');
+            nlBtn.classList.remove('active');
+            selectedLanguage = "en-US";
+            console.log("Language changed to English:", selectedLanguage);
+        }
+    });
+
+    nlBtn.addEventListener('click', () => {
+        if (!nlBtn.classList.contains('active')) {
+            nlBtn.classList.add('active');
+            nlBtn.classList.remove('inactive');
+            engBtn.classList.add('inactive');
+            engBtn.classList.remove('active');
+            selectedLanguage = "nl-NL";
+            console.log("Language changed to Dutch:", selectedLanguage);
+        }
+    });
+}
