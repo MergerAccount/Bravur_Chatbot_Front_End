@@ -128,7 +128,7 @@ function sendMessage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ text: botMsg.textContent, language: isLikelyDutch ? "nl-NL" : "en-US" }),
+          body: JSON.stringify({ text: botMsg.textContent, language: selectedLanguage}),
         })
           .then(res => res.blob())
           .then(blob => {
@@ -308,9 +308,6 @@ document.getElementById("voice-chat-btn").addEventListener("click", function() {
     voiceChatBtn.textContent = "🎙️ Listening...";
     voiceChatBtn.classList.add("listening");
 
-    const languageSelect = document.getElementById("language-select");
-    const selectedLanguage = languageSelect ? languageSelect.value : "nl_NL";
-
     console.log("Using language for speech recognition:", selectedLanguage);
 
      const languageToSend = selectedLanguage === "nl-NL" ? "nl-NL" : "en-US";
@@ -389,6 +386,7 @@ function initializeLanguageButtons() {
     engBtn.classList.remove('active');
 
     selectedLanguage = "nl-NL";
+    console.log("Initial language set to:", selectedLanguage);
 
     engBtn.addEventListener('click', () => {
         if (!engBtn.classList.contains('active')) {
