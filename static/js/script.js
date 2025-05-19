@@ -90,7 +90,8 @@ function sendMessage() {
 
   const formData = new URLSearchParams({
     "user_input": userInput,
-    "session_id": currentSessionId
+    "session_id": currentSessionId,
+      "language": selectedLanguage
   });
 
   fetch("/api/v1/chat", {
