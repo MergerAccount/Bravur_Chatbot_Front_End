@@ -7,6 +7,7 @@ from app.database import create_chat_session, store_message
 def handle_chat():
     user_input = request.form["user_input"]
     session_id = request.form.get("session_id")
+    language = request.form.get("language", "nl-NL")
 
     # Create session if none provided
     if session_id == "None" or not session_id:
@@ -35,7 +36,7 @@ def handle_chat():
     def generate():
         full_reply = ""
         try:
-            for chunk in company_info_handler_streaming(user_input, session_id):
+            for chunk in company_info_handler_streaming(user_input, session_id, language):
                 full_reply += chunk
                 yield chunk
         finally:

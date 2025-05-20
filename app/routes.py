@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, Response, stream_with_context, re
 from app.controllers.chat_controller import handle_chat
 from app.controllers.feedback_controller import handle_feedback_submission
 from app.controllers.history_controller import handle_history_fetch
-from app.database import create_chat_session
+from app.database import create_chat_session, store_message
 from flask import Blueprint, request, jsonify, render_template, session
 from app.controllers.consent_controller import handle_accept_consent, handle_withdraw_consent, check_consent_status
 
@@ -82,3 +82,18 @@ def withdraw_consent():
 def check_consent(session_id):
     result = check_consent_status(session_id)
     return jsonify(result)
+
+
+@routes.route("/language_change", methods=["POST"])
+def language_change():
+    session_id = request.form.get("session_id")
+    from_language = request.form.get("from_language")
+    to_language = request.form.get("to_language")
+
+    if session_id:
+        # Store a system message indicating language change
+        language_message = f"[SYSTEM] Language changed from {from_language} to {to_language}. All responses should now be in {'Dutch' if to_language == 'nl-NL' else 'English'}."
+        store_message(session_id, language_message, "system")
+        return jsonify({"status": "success"})
+
+    return jsonify({"status": "error", "message": "No session ID provided"}), 400
