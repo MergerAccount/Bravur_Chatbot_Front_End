@@ -1,7 +1,9 @@
 let selectedRating = null;
 let recognition = null;
 let isListening = false;
-let currentAudio = null; // Added variable to track audio playback
+let currentAudio = null;
+
+let selectedLanguage = "nl-NL";
 
 // Highlight selected smiley and store the rating value
 function selectSmiley(rating) {
@@ -88,7 +90,8 @@ function sendMessage() {
 
   const formData = new URLSearchParams({
     "user_input": userInput,
-    "session_id": currentSessionId
+    "session_id": currentSessionId,
+      "language": selectedLanguage
   });
 
   fetch("/api/v1/chat", {
@@ -126,7 +129,7 @@ function sendMessage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ text: botMsg.textContent, language: isLikelyDutch ? "nl-NL" : "en-US" }),
+          body: JSON.stringify({ text: botMsg.textContent, language: selectedLanguage}),
         })
           .then(res => res.blob())
           .then(blob => {
@@ -306,8 +309,9 @@ document.getElementById("voice-chat-btn").addEventListener("click", function() {
     voiceChatBtn.textContent = "🎙️ Listening...";
     voiceChatBtn.classList.add("listening");
 
-    const languageSelect = document.getElementById("language-select");
-    const selectedLanguage = languageSelect ? languageSelect.value : "en-US";
+    console.log("Using language for speech recognition:", selectedLanguage);
+
+     const languageToSend = selectedLanguage === "nl-NL" ? "nl-NL" : "en-US";
 
     fetch("/api/v1/stt", {
         method: "POST",
@@ -366,6 +370,86 @@ window.onload = function () {
     }
   });
 
+  initializeLanguageButtons()
+
   console.log("Current Session ID:", currentSessionId);
   loadMessageHistory();
+
 };
+
+function initializeLanguageButtons() {
+    const engBtn = document.getElementById('eng-btn');
+    const nlBtn = document.getElementById('nl-btn');
+
+    // Remember the previous language for changes
+    let previousLanguage = "nl-NL"; // Initial default
+
+    nlBtn.classList.add('active');
+    nlBtn.classList.remove('inactive');
+    engBtn.classList.add('inactive');
+    engBtn.classList.remove('active');
+
+    selectedLanguage = "nl-NL";
+    console.log("Initial language set to:", selectedLanguage);
+
+    engBtn.addEventListener('click', () => {
+        if (!engBtn.classList.contains('active')) {
+            // Check language BEFORE changing the active state and selectedLanguage
+            if (selectedLanguage !== "en-US") {
+                const oldLanguage = selectedLanguage;
+
+                // Now update UI and selectedLanguage
+                engBtn.classList.add('active');
+                engBtn.classList.remove('inactive');
+                nlBtn.classList.add('inactive');
+                nlBtn.classList.remove('active');
+                selectedLanguage = "en-US";
+
+                // Notify about the change
+                notifyLanguageChange(oldLanguage, "en-US");
+                console.log("Language changed to English:", selectedLanguage);
+            }
+        }
+    });
+
+    nlBtn.addEventListener('click', () => {
+        if (!nlBtn.classList.contains('active')) {
+            // Check language BEFORE changing the active state and selectedLanguage
+            if (selectedLanguage !== "nl-NL") {
+                const oldLanguage = selectedLanguage;
+
+                // Now update UI and selectedLanguage
+                nlBtn.classList.add('active');
+                nlBtn.classList.remove('inactive');
+                engBtn.classList.add('inactive');
+                engBtn.classList.remove('active');
+                selectedLanguage = "nl-NL";
+
+                // Notify about the change
+                notifyLanguageChange(oldLanguage, "nl-NL");
+                console.log("Language changed to Dutch:", selectedLanguage);
+            }
+        }
+    });
+}
+
+function notifyLanguageChange(fromLang, toLang) {
+    // Add a language change message to the conversation
+    const formData = new URLSearchParams({
+        "session_id": currentSessionId,
+        "from_language": fromLang,
+        "to_language": toLang
+    });
+
+    fetch("/api/v1/language_change", {
+        method: "POST",
+        body: formData,
+        headers: {"Content-Type": "application/x-www-form-urlencoded"}
+    })
+    .then(response => response.json())
+    .then(data => {
+        const chatBox = document.getElementById("chat-box");
+        chatBox.innerHTML += `<p class="message system-message" style="font-size: 0.8em; color: #999;">Language switched to ${toLang === "nl-NL" ? "Dutch" : "English"}</p>`;
+    });
+}
+
