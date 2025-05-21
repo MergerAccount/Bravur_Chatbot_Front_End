@@ -73,17 +73,21 @@ h1 {
 
 .input-container {
   display: flex;
+  align-items: center;
+  gap: 8px; /* Better than using margin-left on every button */
   padding: 10px;
   background: white;
   border-top: 1px solid #ddd;
+  flex-wrap: wrap; /* Optional: prevent overflow on smaller screens */
 }
 
 .input-container input {
   flex: 1;
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 20px;
   outline: none;
+  min-width: 100px;
 }
 
 .input-container button {
@@ -91,14 +95,24 @@ h1 {
   color: white;
   border: none;
   padding: 10px 15px;
-  margin-left: 10px;
   border-radius: 20px;
   cursor: pointer;
   transition: 0.3s;
+  white-space: nowrap;
 }
 
 .input-container button:hover {
   background: #0056b3;
+}
+
+.input-container select {
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  outline: none;
+  background: white;
+  cursor: pointer;
 }
 
 .spinner {
