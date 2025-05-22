@@ -493,6 +493,9 @@ async function processRecording() {
             formData.append('session_id', window.currentSessionId);
         }
 
+        formData.append('language', selectedLanguage);
+        console.log("Sending speech-to-speech request with language:", selectedLanguage);
+
         spinner.style.display = "block";
 
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -511,6 +514,7 @@ async function processRecording() {
         });
 
         if (!response.ok) {
+            const errorData = await response.json();
             throw new Error(`Server responded with status: ${response.status}`);
         }
 
