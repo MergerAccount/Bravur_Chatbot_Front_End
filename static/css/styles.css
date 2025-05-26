@@ -9,7 +9,7 @@ body {
 }
 
 .chat-container {
-  width: 400px;
+  width: 320px;
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -18,7 +18,7 @@ body {
   overflow: hidden;
 }
 
-h1 {
+h1, h5 {
   text-align: center;
   background: #007bff;
   color: white;
@@ -74,11 +74,11 @@ h1 {
 .input-container {
   display: flex;
   align-items: center;
-  gap: 8px; /* Better than using margin-left on every button */
+  gap: 8px;
   padding: 10px;
   background: white;
   border-top: 1px solid #ddd;
-  flex-wrap: wrap; /* Optional: prevent overflow on smaller screens */
+  flex-wrap: wrap;
 }
 
 .input-container input {
@@ -465,7 +465,6 @@ textarea {
   transform: scale(0.95);
 }
 
-/* Language Toggle Button Styles */
 .language-toggle {
   display: flex;
   justify-content: flex-end;
@@ -496,10 +495,11 @@ textarea {
 }
 
 #chatbox-widget {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
+     position: fixed;
+    bottom: 2vh;
+    right: 2vw;
     z-index: 1000;
+    font-size: 1.8vh;
 }
 
 #chatbox-toggle {
@@ -516,19 +516,23 @@ textarea {
 }
 
 #chatbox-inner {
-    display: none; /* Hidden by default */
+     display: none;
     background: white;
     border: 1px solid #ccc;
     border-radius: 10px;
-    width: 300px;
-    max-height: 400px;
+    width: 350px;
+    max-height: 500px;
     overflow-y: auto;
+    overflow-x: hidden;
     margin-top: 10px;
-     transition: all 0.3s ease;
+    transition: all 0.3s ease;
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
 }
 
 #chatbox-inner:not(.chatbox-hidden) {
-    display: block; /* Show when chatbox-hidden is removed */
+    display: block;
 }
 
 #chatbox-inner.chatbox-hidden {
@@ -542,5 +546,13 @@ textarea {
 #chatbox-toggle {
     cursor: pointer;
     user-select: none;
+}
+
+#sts-btn{
+  margin-left: 0px;
+}
+
+#voice-chat-btn {
+  margin-left: 0px;
 }
 
