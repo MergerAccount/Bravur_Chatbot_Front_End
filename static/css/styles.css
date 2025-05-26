@@ -495,3 +495,52 @@ textarea {
   color: #333;
 }
 
+#chatbox-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+#chatbox-toggle {
+    cursor: pointer;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    background: #0073aa;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+#chatbox-inner {
+    display: none; /* Hidden by default */
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 10px;
+     transition: all 0.3s ease;
+}
+
+#chatbox-inner:not(.chatbox-hidden) {
+    display: block; /* Show when chatbox-hidden is removed */
+}
+
+#chatbox-inner.chatbox-hidden {
+    display: none !important;
+}
+
+#chatbox-inner:not(.chatbox-hidden) {
+    display: block;
+}
+
+#chatbox-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
