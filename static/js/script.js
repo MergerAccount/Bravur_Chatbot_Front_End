@@ -489,8 +489,13 @@ async function processRecording() {
         const formData = new FormData();
         formData.append('audio', audioBlob, 'input.webm');
 
-        if (window.currentSessionId) {
-            formData.append('session_id', window.currentSessionId);
+        // Fixed: Remove 'window.' prefix and add debugging
+        console.log("Current session ID:", currentSessionId);
+        if (currentSessionId) {
+            formData.append('session_id', currentSessionId);
+            console.log("Session ID added to FormData:", currentSessionId);
+        } else {
+            console.error("WARNING: No session ID available!");
         }
 
         formData.append('language', selectedLanguage);
