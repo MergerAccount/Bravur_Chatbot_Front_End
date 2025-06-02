@@ -489,7 +489,6 @@ async function processRecording() {
         const formData = new FormData();
         formData.append('audio', audioBlob, 'input.webm');
 
-        // Fixed: Remove 'window.' prefix and add debugging
         console.log("Current session ID:", currentSessionId);
         if (currentSessionId) {
             formData.append('session_id', currentSessionId);
@@ -507,11 +506,18 @@ async function processRecording() {
             const placeholderMsg = document.createElement("p");
             placeholderMsg.className = "message user-message";
             placeholderMsg.id = "temp-user-message";
-            placeholderMsg.textContent = "Processing your audio...";
+            placeholderMsg.textContent = "Initializing microphone...";
             document.getElementById("chat-box").appendChild(placeholderMsg);
 
             showThinkingIndicator();
-        }
+
+             setTimeout(() => {
+                    const tempMsg = document.getElementById("temp-user-message");
+                    if (tempMsg) {
+                        tempMsg.textContent = "Speak now...";
+                    }
+                }, 3000);
+            }
 
         const response = await fetch('/api/v1/sts', {
             method: 'POST',
