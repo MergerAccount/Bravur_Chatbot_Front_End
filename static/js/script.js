@@ -1,7 +1,12 @@
 let selectedRating = null;
 let recognition = null;
 let isListening = false;
-let currentAudio = null; // Added variable to track audio playback
+let currentAudio = null;
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let audioStream = null;
+let selectedLanguage = "nl-NL";
 
 // Highlight selected smiley and store the rating value
 function selectSmiley(rating) {
@@ -88,7 +93,8 @@ function sendMessage() {
 
   const formData = new URLSearchParams({
     "user_input": userInput,
-    "session_id": currentSessionId
+    "session_id": currentSessionId,
+      "language": selectedLanguage
   });
 
   fetch("/api/v1/chat", {
@@ -126,7 +132,7 @@ function sendMessage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ text: botMsg.textContent, language: isLikelyDutch ? "nl-NL" : "en-US" }),
+          body: JSON.stringify({ text: botMsg.textContent, language: selectedLanguage}),
         })
           .then(res => res.blob())
           .then(blob => {
@@ -145,25 +151,6 @@ function sendMessage() {
       container.appendChild(botMsg);
       container.appendChild(speakButton);
       chatBox.appendChild(container);
-
-      function detectDutchLanguage(text) {
-      // This is a simple detection based on common Dutch words
-         const dutchWords = ['de', 'het', 'een', 'ik', 'jij', 'hij', 'zij', 'wij', 'jullie',
-                                      'en', 'of', 'maar', 'want', 'dus', 'omdat', 'als', 'dan',
-                                      'hallo', 'goedemorgen', 'goedemiddag', 'goedenavond', 'doei'];
-
-         const words = text.toLowerCase().split(/\s+/);
-         let dutchWordCount = 0;
-
-         for (const word of words) {
-             if (dutchWords.includes(word)) {
-                 dutchWordCount++;
-             }
-         }
-
-         // If more than 10% of words are Dutch, consider it Dutch
-         return dutchWordCount / words.length > 0.1;
-      }
 
       function readChunk() {
         return reader.read().then(({ done, value }) => {
@@ -193,6 +180,57 @@ function sendMessage() {
       spinner.style.display = "none";
       chatBox.innerHTML += `<p class="message bot-message">Something went wrong. Try again!</p>`;
     });
+}
+
+function detectDutchLanguage(text) {
+      // This is a simple detection based on common Dutch words
+         const dutchWords = ['de', 'het', 'een', 'ik', 'jij', 'hij', 'zij', 'wij', 'jullie',
+                                      'en', 'of', 'maar', 'want', 'dus', 'omdat', 'als', 'dan',
+                                      'hallo', 'goedemorgen', 'goedemiddag', 'goedenavond', 'doei'];
+
+         const words = text.toLowerCase().split(/\s+/);
+         let dutchWordCount = 0;
+
+         for (const word of words) {
+             if (dutchWords.includes(word)) {
+                 dutchWordCount++;
+             }
+         }
+
+         // If more than 10% of words are Dutch, consider it Dutch
+         return dutchWordCount / words.length > 0.1;
+}
+
+function addMessageToChat(type, text) {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${type}-message`;
+    messageDiv.innerText = text;
+
+    const chatContainer = document.querySelector(".chat-container");
+    chatContainer.appendChild(messageDiv);
+
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Helper function to show a thinking indicator
+function showThinkingIndicator() {
+    hideThinkingIndicator();
+
+    const thinkingDiv = document.createElement("div");
+    thinkingDiv.id = "thinking-indicator";
+    thinkingDiv.className = "message bot-message thinking";
+    thinkingDiv.innerHTML = "<div class='thinking-dots'><span>.</span><span>.</span><span>.</span></div>";
+
+    const chatContainer = document.querySelector(".chat-container");
+    chatContainer.appendChild(thinkingDiv);
+}
+
+
+function hideThinkingIndicator() {
+    const thinkingDiv = document.getElementById("thinking-indicator");
+    if (thinkingDiv) {
+        thinkingDiv.remove();
+    }
 }
 
 function submitFeedback() {
@@ -306,8 +344,9 @@ document.getElementById("voice-chat-btn").addEventListener("click", function() {
     voiceChatBtn.textContent = "🎙️ Listening...";
     voiceChatBtn.classList.add("listening");
 
-    const languageSelect = document.getElementById("language-select");
-    const selectedLanguage = languageSelect ? languageSelect.value : "en-US";
+    console.log("Using language for speech recognition:", selectedLanguage);
+
+     const languageToSend = selectedLanguage === "nl-NL" ? "nl-NL" : "en-US";
 
     fetch("/api/v1/stt", {
         method: "POST",
@@ -336,7 +375,6 @@ document.getElementById("voice-chat-btn").addEventListener("click", function() {
         alert("Speech recognition error. Please try again.");
     })
     .finally(() => {
-        // Always stop the recognition UI feedback when done
         stopSpeechRecognition();
     });
 });
@@ -355,6 +393,224 @@ function stopSpeechRecognition() {
     }
 }
 
+const stsButton = document.getElementById("sts-btn");
+
+stsButton.innerHTML = "🤖";
+stsButton.title = "Use Voice Mode 🤖";
+
+stsButton.addEventListener("click", handleStsButtonClick);
+
+function handleStsButtonClick() {
+    console.log("Button clicked, current state:", isRecording);
+
+    if (!isRecording) {
+        startRecordingProcess();
+    } else {
+        stopRecordingProcess();
+    }
+}
+
+async function startRecordingProcess() {
+    try {
+        console.log("Starting recording process");
+
+        stsButton.innerHTML = "Start Talking";
+        stsButton.title = "Click to start/stop recording";
+
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        mediaRecorder = new MediaRecorder(audioStream, {
+            mimeType: 'audio/webm'
+        });
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = processRecording;
+
+        audioChunks = [];
+
+        mediaRecorder.start(100);
+
+        isRecording = true;
+
+        console.log("Recording started successfully");
+
+    } catch (error) {
+        console.error("Failed to start recording:", error);
+
+        isRecording = false;
+        stsButton.innerHTML = "🤖";
+        stsButton.title = "Use Voice Mode 🤖";
+        stsButton.disabled = false;
+
+        const errorMsg = document.createElement("p");
+        errorMsg.className = "message system-message";
+        errorMsg.textContent = "Unable to access microphone. Please check your permissions and try again.";
+        document.getElementById("chat-box").appendChild(errorMsg);
+    }
+}
+
+function stopRecordingProcess() {
+    console.log("Stopping recording process");
+
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+    } else {
+        resetUI();
+    }
+}
+
+function resetUI() {
+    console.log("Resetting UI");
+
+    isRecording = false;
+
+    stsButton.innerHTML = "🤖";
+    stsButton.title = "Use Voice Mode 🤖";
+    stsButton.disabled = false;
+
+    if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+    }
+
+    mediaRecorder = null;
+}
+
+async function processRecording() {
+    const spinner = document.getElementById("spinner");
+    console.log("Processing recording");
+
+    try {
+        const audioBlob = new Blob(audioChunks);
+
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'input.webm');
+
+        console.log("Current session ID:", currentSessionId);
+        if (currentSessionId) {
+            formData.append('session_id', currentSessionId);
+            console.log("Session ID added to FormData:", currentSessionId);
+        } else {
+            console.error("WARNING: No session ID available!");
+        }
+
+        formData.append('language', selectedLanguage);
+        console.log("Sending speech-to-speech request with language:", selectedLanguage);
+
+        spinner.style.display = "block";
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const placeholderMsg = document.createElement("p");
+            placeholderMsg.className = "message user-message";
+            placeholderMsg.id = "temp-user-message";
+            placeholderMsg.textContent = "Initializing microphone...";
+            document.getElementById("chat-box").appendChild(placeholderMsg);
+
+            showThinkingIndicator();
+
+             setTimeout(() => {
+                    const tempMsg = document.getElementById("temp-user-message");
+                    if (tempMsg) {
+                        tempMsg.textContent = "Speak now...";
+                    }
+                }, 3000);
+            }
+
+        const response = await fetch('/api/v1/sts', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        hideThinkingIndicator();
+        spinner.style.display = "none";
+
+        const tempUserMsg = document.getElementById("temp-user-message");
+        if (tempUserMsg) {
+            tempUserMsg.textContent = data.user_text;
+            tempUserMsg.id = "";
+        } else {
+            const userMsg = document.createElement("p");
+            userMsg.className = "message user-message";
+            userMsg.textContent = data.user_text;
+            document.getElementById("chat-box").appendChild(userMsg);
+        }
+
+        const container = document.createElement("div");
+        container.className = "bot-message-container";
+
+        const botMsg = document.createElement("p");
+        botMsg.className = "message bot-message";
+        botMsg.textContent = data.bot_text;
+
+        const speakButton = document.createElement("button");
+        speakButton.className = "speak-btn";
+        speakButton.innerHTML = "🔊";
+        speakButton.onclick = () => {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+
+            if (data.audio_base64) {
+                const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+                const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                const audioUrl = URL.createObjectURL(audioResponseBlob);
+                currentAudio = new Audio(audioUrl);
+                currentAudio.play();
+
+                currentAudio.onended = function() {
+                    URL.revokeObjectURL(audioUrl);
+                };
+            }
+        };
+
+        container.appendChild(botMsg);
+        container.appendChild(speakButton);
+        document.getElementById("chat-box").appendChild(container);
+
+        document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+
+        if (data.audio_base64) {
+            const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+            const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+            const audioUrl = URL.createObjectURL(audioResponseBlob);
+            currentAudio = new Audio(audioUrl);
+            currentAudio.play();
+
+            currentAudio.onended = function() {
+                URL.revokeObjectURL(audioUrl);
+            };
+        }
+
+    } catch (error) {
+        spinner.style.display = "none";
+        hideThinkingIndicator();
+        console.error("Error processing speech-to-speech:", error);
+
+        const tempUserMsg = document.getElementById("temp-user-message");
+        if (tempUserMsg) {
+            tempUserMsg.remove();
+        }
+
+        const errorMsg = document.createElement("p");
+        errorMsg.className = "message system-message";
+        errorMsg.textContent = "Sorry, there was an error processing your speech. Please try again.";
+        document.getElementById("chat-box").appendChild(errorMsg);
+    } finally {
+        resetUI();
+    }
+}
+
 window.onload = function () {
     const chatBox = document.getElementById("chat-box");
     chatBox.innerHTML += '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
@@ -366,6 +622,86 @@ window.onload = function () {
     }
   });
 
+  initializeLanguageButtons()
+
   console.log("Current Session ID:", currentSessionId);
   loadMessageHistory();
+
 };
+
+function initializeLanguageButtons() {
+    const engBtn = document.getElementById('eng-btn');
+    const nlBtn = document.getElementById('nl-btn');
+
+    // Remember the previous language for changes
+    let previousLanguage = "nl-NL"; // Initial default
+
+    nlBtn.classList.add('active');
+    nlBtn.classList.remove('inactive');
+    engBtn.classList.add('inactive');
+    engBtn.classList.remove('active');
+
+    selectedLanguage = "nl-NL";
+    console.log("Initial language set to:", selectedLanguage);
+
+    engBtn.addEventListener('click', () => {
+        if (!engBtn.classList.contains('active')) {
+            // Check language BEFORE changing the active state and selectedLanguage
+            if (selectedLanguage !== "en-US") {
+                const oldLanguage = selectedLanguage;
+
+                // Now update UI and selectedLanguage
+                engBtn.classList.add('active');
+                engBtn.classList.remove('inactive');
+                nlBtn.classList.add('inactive');
+                nlBtn.classList.remove('active');
+                selectedLanguage = "en-US";
+
+                // Notify about the change
+                notifyLanguageChange(oldLanguage, "en-US");
+                console.log("Language changed to English:", selectedLanguage);
+            }
+        }
+    });
+
+    nlBtn.addEventListener('click', () => {
+        if (!nlBtn.classList.contains('active')) {
+            // Check language BEFORE changing the active state and selectedLanguage
+            if (selectedLanguage !== "nl-NL") {
+                const oldLanguage = selectedLanguage;
+
+                // Now update UI and selectedLanguage
+                nlBtn.classList.add('active');
+                nlBtn.classList.remove('inactive');
+                engBtn.classList.add('inactive');
+                engBtn.classList.remove('active');
+                selectedLanguage = "nl-NL";
+
+                // Notify about the change
+                notifyLanguageChange(oldLanguage, "nl-NL");
+                console.log("Language changed to Dutch:", selectedLanguage);
+            }
+        }
+    });
+}
+
+function notifyLanguageChange(fromLang, toLang) {
+    // Add a language change message to the conversation
+    const formData = new URLSearchParams({
+        "session_id": currentSessionId,
+        "from_language": fromLang,
+        "to_language": toLang
+    });
+
+    fetch("/api/v1/language_change", {
+        method: "POST",
+        body: formData,
+        headers: {"Content-Type": "application/x-www-form-urlencoded"}
+    })
+    .then(response => response.json())
+    .then(data => {
+        const chatBox = document.getElementById("chat-box");
+        chatBox.innerHTML += `<p class="message system-message" style="font-size: 0.8em; color: #999;">Language switched to ${toLang === "nl-NL" ? "Dutch" : "English"}</p>`;
+    });
+}
+
