@@ -1,0 +1,497 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.chat-container {
+  width: 400px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+h1 {
+  text-align: center;
+  background: #007bff;
+  color: white;
+  padding: 15px;
+  margin: 0;
+}
+
+.chat-box {
+  height: 400px;
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fafafa;
+}
+
+.message {
+  max-width: 80%;
+  padding: 10px 15px;
+  border-radius: 20px;
+  word-wrap: break-word;
+  font-size: 14px;
+}
+
+.user-message {
+  align-self: flex-end;
+  background: #007bff;
+  color: white;
+}
+
+.bot-message {
+  align-self: flex-start;
+  background: #e0e0e0;
+  color: black;
+}
+
+.bot-message-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.speak-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Better than using margin-left on every button */
+  padding: 10px;
+  background: white;
+  border-top: 1px solid #ddd;
+  flex-wrap: wrap; /* Optional: prevent overflow on smaller screens */
+}
+
+.input-container input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+  min-width: 100px;
+}
+
+.input-container button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.3s;
+  white-space: nowrap;
+}
+
+.input-container button:hover {
+  background: #0056b3;
+}
+
+.input-container select {
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  outline: none;
+  background: white;
+  cursor: pointer;
+}
+
+.spinner {
+  display: none;
+  text-align: center;
+  padding: 10px;
+}
+
+.session-info {
+  text-align: center;
+  font-size: 12px;
+  padding: 5px;
+  background: #f1f1f1;
+  color: #333;
+}
+
+.feedback-container {
+  padding: 10px;
+  border-top: 1px solid #ddd;
+  background: #fff;
+  text-align: center;
+}
+
+.smiley-row span {
+  font-size: 24px;
+  margin: 0 5px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.smiley-row span.selected {
+  transform: scale(1.3);
+  border: 2px solid #007bff;
+  border-radius: 50%;
+  padding: 2px;
+}
+
+textarea {
+  margin-top: 10px;
+  width: 90%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  resize: none;
+}
+
+.feedback-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.feedback-actions button {
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+}
+
+.feedback-actions button:hover {
+  background-color: #0056b3;
+}
+
+.show-feedback-btn {
+  text-align: center;
+  margin: 10px;
+}
+
+.show-feedback-btn button {
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: none;
+  background-color: #888;
+  color: white;
+  cursor: pointer;
+}
+
+.feedback-message {
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.edit-feedback {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.edit-feedback:hover {
+  background-color: #218838;
+}
+
+.listening {
+    animation: pulse 1.5s infinite;
+    background-color: #ff000020;
+    border-radius: 50%;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.gdpr-buttons button {
+  margin: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  margin-bottom: 15px;
+}
+
+.chat-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.footer-left {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-left a {
+  color: #666;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+
+.footer-left a:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+.consent-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .chat-header {
+    padding: 8px 0;
+  }
+
+  .manage-consent-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .footer-left {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+
+.gdpr-content {
+  background: #fff;
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.gdpr-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.gdpr-content a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.gdpr-content a:hover {
+  text-decoration: underline;
+}
+
+.gdpr-buttons button {
+  margin: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.gdpr-buttons button:hover {
+  background: #0056b3;
+}
+.dropdown-content-container {
+  display: none;
+  padding: 10px;
+  background: #fff;
+  margin-top: 5px;
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.dropdown-content p {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.footer-actions {
+  text-align: right;
+}
+
+.footer-actions button {
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+}
+
+.footer-actions button:hover {
+  background-color: #0056b3;
+}
+
+.chat-footer {
+  margin-top: 15px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.footer-left {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 25px;
+}
+
+.footer-left a {
+  color: #666;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+  margin: 5px 0;
+}
+
+.footer-left a:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+/* Consent Bubble Styles */
+.consent-bubble {
+  position: relative;
+  top: 50%;
+  display: none;
+  padding: 0 20px;
+  background: #fafafa;
+}
+
+.consent-message {
+  display: flex;
+  background-color: #f0f0f0;
+  border-radius: 10px 10px 0px 0px;
+  padding: 15px;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: -4px;
+  flex: auto;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.consent-message p {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.accept-consent-btn {
+  background-color: #007bff;
+  margin: 0px 20px;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.accept-consent-btn:hover {
+  background-color: #007bff;
+}
+
+.accept-consent-btn:active {
+  background-color: #007bff;
+}
+
+.withdraw-btn {
+  background-color: #ff0000;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transitions */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.withdraw-btn:hover {
+  background-color: #cc0000;
+  transform: scale(1.05);
+}
+
+.withdraw-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.3);
+}
+
+.withdraw-btn:active {
+  transform: scale(0.95);
+}
+
+/* Language Toggle Button Styles */
+.language-toggle {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  padding: 10px;
+  margin-top: -35px;
+}
+
+.language-btn {
+  border-radius: 15px;
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+}
+
+.language-btn.active {
+  background-color: #0080ff;
+  color: white;
+  border-color: #0080ff;
+}
+
+.language-btn.inactive {
+  background-color: white;
+  color: #333;
+}
+
