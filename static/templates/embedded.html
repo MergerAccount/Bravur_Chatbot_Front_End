@@ -1,0 +1,76 @@
+<!-- Embedded Template: static/templates/embedded.html -->
+<div class="bravur-chatbot-embedded">
+    <div class="chat-container">
+        <h1>Bravur AI Chatbot</h1>
+        <div class="chat-header"></div>
+
+        <div class="language-toggle-container">
+            <div class="language-toggle">
+                <button id="eng-btn" class="language-btn active" data-lang="en-US">ENG</button>
+                <button id="nl-btn" class="language-btn inactive" data-lang="nl-NL">NL</button>
+            </div>
+        </div>
+
+        <div id="chat-box" class="chat-box"></div>
+        <div class="spinner" id="spinner" style="display: none;">
+            <div class="typing-indicator">AI is typing...</div>
+        </div>
+
+        <!-- Consent Chat Bubble -->
+        <div id="consent-bubble" class="consent-bubble" style="display: none;">
+            <div class="consent-message">
+                <p>We use cookies and collect data to improve your experience. Please accept to continue using the chatbot.</p>
+                <button id="accept-consent-btn" class="accept-consent-btn">Accept</button>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <button id="sts-btn" title="Use Voice Mode 🤖">🤖</button>
+            <button id="voice-chat-btn" title="Dictate 🎤">🎤</button>
+            <input type="text" id="user-input" placeholder="Type your question...">
+            <button id="send-btn">Send</button>
+        </div>
+
+        <div class="session-info">Session ID: <span id="session-id">Loading...</span></div>
+        <div class="consent-status" id="consent-status"></div>
+        
+        <div class="show-feedback-btn" id="show-feedback-btn" style="display: none;">
+            <button onclick="showFeedback()">Give Feedback</button>
+        </div>
+        
+        <div class="feedback-container" id="feedback-container" style="display: none;">
+            <h3>Rate your experience</h3>
+            <div class="smiley-row" id="smiley-row">
+                <span onclick="selectSmiley(1)">😠</span>
+                <span onclick="selectSmiley(2)">😕</span>
+                <span onclick="selectSmiley(3)">😐</span>
+                <span onclick="selectSmiley(4)">🙂</span>
+                <span onclick="selectSmiley(5)">😍</span>
+            </div>
+            <textarea id="feedback-comment" rows="3" placeholder="Optional comment..."></textarea>
+            <div class="feedback-actions">
+                <button onclick="submitFeedback()">Submit Feedback</button>
+                <button onclick="hideFeedback()" style="background:#ccc;color:#000;">Hide</button>
+            </div>
+            <div id="edit-feedback-btn" style="margin-top: 10px; display: none;">
+                <button class="edit-feedback" onclick="enableEditMode()">Edit Feedback</button>
+            </div>
+            <div id="feedback-message" class="feedback-message"></div>
+        </div>
+
+        <div class="chat-footer">
+            <div class="footer-left">
+                <a href="#" id="privacy-policy-link" onclick="showPolicy(event)">Privacy Policy</a>
+                <a href="#" id="terms-link" onclick="showTerms(event)">Terms of Use</a>
+                <a href="#" id="manage-data-link" onclick="showManageData(event)">Manage My Data</a>
+            </div>
+        </div>
+
+        <div class="dropdown-content-container" id="dropdown-content-container" style="display: none;">
+            <div class="dropdown-content" id="dropdown-content"></div>
+            <div class="footer-actions">
+                <button onclick="hideDropdown()">Hide</button>
+            </div>
+        </div>
+    </div>
+</div>
