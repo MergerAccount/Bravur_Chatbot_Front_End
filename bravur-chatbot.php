@@ -18,7 +18,6 @@ class BravurChatbotPlugin {
         add_action('wp_footer', [$this, 'render_chatbot']);
         add_shortcode('bravur_chatbot', [$this, 'shortcode']);
         
-        // Add AJAX handlers for API proxy
         add_action('wp_ajax_bravur_api_proxy', [$this, 'handle_api_proxy']);
         add_action('wp_ajax_nopriv_bravur_api_proxy', [$this, 'handle_api_proxy']);
     }
@@ -165,9 +164,6 @@ class BravurChatbotPlugin {
         </div>';
     }
 
-    /**
-     * FIXED: Only create session when explicitly requested via AJAX
-     */
     private function create_session_via_api() {
         error_log('🔄 Creating session via API...');
         
@@ -203,9 +199,6 @@ class BravurChatbotPlugin {
         return null;
     }
     
-    /**
-     * Get file version for cache busting
-     */
     private function get_file_version($file_path) {
         $full_path = plugin_dir_path(__FILE__) . $file_path;
         if (file_exists($full_path)) {
