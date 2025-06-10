@@ -1,71 +1,64 @@
-
-let selectedRating = null;
-let recognition = null;
-let isListening = false;
-let currentAudio = null;
-let isRecording = false;
-let mediaRecorder = null;
-let audioChunks = [];
-let audioStream = null;
-let selectedLanguage = "nl-NL";
-let currentSessionId = null;
-
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     console.log("🔧 Bravur Chatbot WordPress script loaded");
-    
+
     // Debug: Check for conflicts
     console.log("🔍 Checking for potential conflicts...");
     console.log("📦 jQuery version:", typeof $ !== 'undefined' ? $.fn.jquery : 'Not loaded');
     console.log("🎯 Other chatbots:", document.querySelectorAll('[id*="chat"], [class*="chat"]').length);
-    
+
     // Get WordPress localized variables SAFELY
     if (typeof bravurChatbot === 'undefined') {
         console.error("❌ bravurChatbot variables not found! Plugin assets may not be loading.");
         return;
     }
-    
+
     const apiUrl = bravurChatbot.api_url;
     const ajaxUrl = bravurChatbot.ajax_url;
     const nonce = bravurChatbot.nonce;
-    currentSessionId = bravurChatbot.session_id;
-    
+    let currentSessionId = bravurChatbot.session_id;
+
     console.log("📊 Bravur Config:", {
-        apiUrl: apiUrl, 
-        ajaxUrl: ajaxUrl, 
+        apiUrl: apiUrl,
+        ajaxUrl: ajaxUrl,
         sessionId: currentSessionId
     });
-    
+
     // Check if our chatbot elements exist
     const ourChatbot = document.querySelector('.bravur-chatbot-widget');
     if (!ourChatbot) {
         console.error("❌ Bravur chatbot widget not found in DOM!");
         return;
     }
-    
+
+    // Set session ID as data attribute
+    if (currentSessionId) {
+        ourChatbot.dataset.sessionId = currentSessionId;
+    }
+
     // Initialize chatbot with protection
     try {
         initializeChatbot();
     } catch (error) {
         console.error("💥 Error initializing Bravur chatbot:", error);
     }
-    
+
     function initializeChatbot() {
         setupEventListeners();
         initializeLanguageButtons();
         createSessionAndCheckConsent();
-        
+
         // Add welcome message
         const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
         if (chatBox) {
             chatBox.innerHTML += '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
         }
-        
+
         // Load message history if session exists
         if (currentSessionId) {
             loadMessageHistory();
         }
     }
-    
+
     function setupEventListeners() {
         // Use more specific selectors to avoid conflicts
         const bravurWidget = document.querySelector('.bravur-chatbot-widget');
@@ -73,13 +66,13 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error("❌ Bravur widget container not found!");
             return;
         }
-        
+
         // Toggle button for floating widget
         const toggleBtn = bravurWidget.querySelector('.chatbot-toggle-btn');
         const container = bravurWidget.querySelector('#chatbot-container');
-        
+
         if (toggleBtn && container) {
-            toggleBtn.addEventListener('click', function(e) {
+            toggleBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 container.classList.toggle('chatbot-hidden');
                 const icon = toggleBtn.querySelector('#toggle-icon');
@@ -89,21 +82,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 console.log("🎯 Bravur floating widget toggle clicked");
             });
         }
-        
+
         // Send button
         const sendBtn = bravurWidget.querySelector('#send-btn');
         if (sendBtn) {
-            sendBtn.addEventListener('click', function(e) {
+            sendBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 sendMessage();
             });
         }
-        
+
         // Enter key in input
         const userInput = bravurWidget.querySelector('#user-input');
         if (userInput) {
-            userInput.addEventListener('keydown', function(event) {
+            userInput.addEventListener('keydown', function (event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
                     event.stopPropagation();
@@ -111,42 +104,42 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             });
         }
-        
+
         // Voice chat button
         const voiceChatBtn = bravurWidget.querySelector('#voice-chat-btn');
         if (voiceChatBtn) {
-            voiceChatBtn.addEventListener('click', function(e) {
+            voiceChatBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 handleVoiceInput();
             });
         }
-        
+
         // Speech-to-Speech button
         const stsBtn = bravurWidget.querySelector('#sts-btn');
         if (stsBtn) {
             stsBtn.innerHTML = "🤖";
             stsBtn.title = "Use Voice Mode 🤖";
-            stsBtn.addEventListener('click', function(e) {
+            stsBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 handleStsButtonClick();
             });
         }
-        
+
         // Consent button
         const acceptConsentBtn = bravurWidget.querySelector('#accept-consent-btn');
         if (acceptConsentBtn) {
-            acceptConsentBtn.addEventListener('click', function(e) {
+            acceptConsentBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 handleAcceptConsent();
             });
         }
-        
+
         console.log("✅ Bravur event listeners attached safely");
     }
-    
+
     function initializeLanguageButtons() {
         const engBtn = document.querySelector('.bravur-chatbot-widget #eng-btn');
         const nlBtn = document.querySelector('.bravur-chatbot-widget #nl-btn');
@@ -162,7 +155,7 @@ document.addEventListener("DOMContentLoaded", function() {
         selectedLanguage = "nl-NL";
         console.log("Initial language set to:", selectedLanguage);
 
-        engBtn.addEventListener('click', function() {
+        engBtn.addEventListener('click', function () {
             if (!engBtn.classList.contains('active')) {
                 if (selectedLanguage !== "en-US") {
                     const oldLanguage = selectedLanguage;
@@ -179,7 +172,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        nlBtn.addEventListener('click', function() {
+        nlBtn.addEventListener('click', function () {
             if (!nlBtn.classList.contains('active')) {
                 if (selectedLanguage !== "nl-NL") {
                     const oldLanguage = selectedLanguage;
@@ -196,28 +189,35 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
     }
-    
+
     async function createSessionAndCheckConsent() {
         console.log('🚀 Starting session creation...');
         console.log('📍 Current URL:', window.location.href);
         console.log('🔧 AJAX URL:', ajaxUrl);
         console.log('🎫 Nonce:', nonce);
-        
+
         try {
             console.log('📡 Making AJAX call to create session...');
-            
+
             const sessionResponse = await makeWordPressAPICall('create_session', {});
-            
+
             console.log('📨 Session response received:', sessionResponse);
-            
+
             if (sessionResponse.success && sessionResponse.data.session_id) {
                 currentSessionId = sessionResponse.data.session_id;
                 const sessionEl = document.querySelector('.bravur-chatbot-widget #session-id');
                 if (sessionEl) {
                     sessionEl.textContent = currentSessionId;
                 }
+
+                // Set session ID as data attribute
+                const bravurWidget = document.querySelector('.bravur-chatbot-widget');
+                if (bravurWidget) {
+                    bravurWidget.dataset.sessionId = currentSessionId;
+                }
+
                 console.log('✅ Session created successfully:', currentSessionId);
-                
+
                 checkConsentStatus();
             } else {
                 console.error('❌ Failed to create session:', sessionResponse);
@@ -229,13 +229,13 @@ document.addEventListener("DOMContentLoaded", function() {
             addSystemMessage('Error initializing chatbot. Please refresh the page.');
         }
     }
-    
+
     async function checkConsentStatus() {
         if (!currentSessionId) return;
-        
+
         try {
             const response = await makeWordPressAPICall('consent_check', { session_id: currentSessionId });
-            
+
             if (response.success && response.data.can_proceed) {
                 enableChat();
             } else {
@@ -246,7 +246,7 @@ document.addEventListener("DOMContentLoaded", function() {
             showConsentBubble();
         }
     }
-    
+
     function showConsentBubble() {
         const consentBubble = document.querySelector('.bravur-chatbot-widget #consent-bubble');
         if (consentBubble) {
@@ -254,16 +254,16 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         disableChat();
     }
-    
+
     async function handleAcceptConsent() {
         if (!currentSessionId) {
             addSystemMessage("No session ID available. Please refresh the page.");
             return;
         }
-        
+
         try {
             const response = await makeWordPressAPICall('consent_accept', { session_id: currentSessionId });
-            
+
             if (response.success && response.data.success) {
                 const consentBubble = document.querySelector('.bravur-chatbot-widget #consent-bubble');
                 if (consentBubble) {
@@ -287,16 +287,16 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error("❌ Bravur widget not found for sendMessage");
             return;
         }
-        
+
         var userInputField = bravurWidget.querySelector("#user-input");
         var chatBox = bravurWidget.querySelector("#chat-box");
         var spinner = bravurWidget.querySelector("#spinner");
-        
+
         if (!userInputField || !chatBox || !spinner) {
             console.error("❌ Required elements not found in Bravur widget");
             return;
         }
-        
+
         var userInput = userInputField.value.trim();
         if (userInput === "") return;
 
@@ -307,7 +307,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var startTime = performance.now();
         var elapsed = 0;
         spinner.textContent = "⏳ Typing...";
-        var timerInterval = setInterval(function() {
+        var timerInterval = setInterval(function () {
             elapsed = (performance.now() - startTime) / 1000;
             spinner.textContent = "⏳ Typing... " + elapsed.toFixed(1) + "s";
         }, 100);
@@ -318,13 +318,22 @@ document.addEventListener("DOMContentLoaded", function() {
             user_input: userInput,
             session_id: currentSessionId,
             language: selectedLanguage
-        }).then(function(response) {
+        }).then(function (response) {
             clearInterval(timerInterval);
             var finalTime = (performance.now() - startTime) / 1000;
-            
+
+            // Handle CAPTCHA response
+            if (response.data && response.data.captcha_required) {
+                spinner.style.display = "none";
+                if (typeof checkAndMaybeTriggerCaptcha === 'function') {
+                    checkAndMaybeTriggerCaptcha(response.data.count, response.data.limit);
+                }
+                return;
+            }
+
             if (response.success && response.data.response) {
                 spinner.textContent = "🕒 Responded in " + finalTime.toFixed(1) + "s";
-                setTimeout(function() {
+                setTimeout(function () {
                     spinner.style.display = "none";
                     spinner.textContent = "";
                 }, 2000);
@@ -339,24 +348,44 @@ document.addEventListener("DOMContentLoaded", function() {
                 var speakButton = document.createElement("button");
                 speakButton.className = "speak-btn";
                 speakButton.innerHTML = "🔊";
-                speakButton.onclick = function() { speakText(botMsg.textContent); };
+                speakButton.onclick = function () { speakText(botMsg.textContent); };
 
                 container.appendChild(botMsg);
                 container.appendChild(speakButton);
                 chatBox.appendChild(container);
-                
+
                 showFeedbackOption();
+                // 🔐 After bot response, check if rate limit is near the threshold
+                fetch(`${apiUrl}/ratelimit/check/${currentSessionId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && typeof checkAndMaybeTriggerCaptcha === 'function') {
+                            checkAndMaybeTriggerCaptcha(data.count, data.limit);
+                        }
+                    })
+                    .catch(err => console.warn("Rate limit check failed:", err));
             } else {
                 spinner.style.display = "none";
                 chatBox.innerHTML += '<p class="message bot-message">Sorry, I could not process your message. Please try again.</p>';
             }
-            
+
             chatBox.scrollTop = chatBox.scrollHeight;
-        }).catch(function(error) {
+        }).catch(function (error) {
             console.error("Bravur chat error:", error);
             clearInterval(timerInterval);
             spinner.style.display = "none";
-            chatBox.innerHTML += '<p class="message bot-message">Something went wrong. Try again!</p>';
+
+            // Handle CAPTCHA error response
+            if (error.response && error.response.data && error.response.data.captcha_required) {
+                if (typeof checkAndMaybeTriggerCaptcha === 'function') {
+                    checkAndMaybeTriggerCaptcha(
+                        error.response.data.count,
+                        error.response.data.limit
+                    );
+                }
+            } else {
+                chatBox.innerHTML += '<p class="message bot-message">Something went wrong. Try again!</p>';
+            }
         });
     }
 
@@ -381,7 +410,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (response.success && response.data.status === "success" && response.data.text) {
                 document.querySelector('.bravur-chatbot-widget #user-input').value = response.data.text;
 
-                setTimeout(function() {
+                setTimeout(function () {
                     sendMessage();
                 }, 500);
             } else {
@@ -429,7 +458,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 mimeType: 'audio/webm'
             });
 
-            mediaRecorder.ondataavailable = function(event) {
+            mediaRecorder.ondataavailable = function (event) {
                 audioChunks.push(event.data);
             };
 
@@ -483,7 +512,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         if (audioStream) {
-            audioStream.getTracks().forEach(function(track) { track.stop(); });
+            audioStream.getTracks().forEach(function (track) { track.stop(); });
             audioStream = null;
         }
 
@@ -527,11 +556,11 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
             const result = await response.json();
-            
+
             if (!result.success) {
                 throw new Error(result.data ? result.data.message : 'STS request failed');
             }
-            
+
             const data = result.data;
 
             if (spinner) {
@@ -554,7 +583,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const speakButton = document.createElement("button");
             speakButton.className = "speak-btn";
             speakButton.innerHTML = "🔊";
-            speakButton.onclick = function() {
+            speakButton.onclick = function () {
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
@@ -621,13 +650,13 @@ document.addEventListener("DOMContentLoaded", function() {
     async function loadMessageHistory() {
         try {
             const response = await makeWordPressAPICall('history', { session_id: currentSessionId });
-            
+
             if (response.success && response.data.messages) {
                 const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
-                response.data.messages.forEach(function(msg) {
+                response.data.messages.forEach(function (msg) {
                     const p = document.createElement("p");
                     p.className = "message";
-                    
+
                     if (msg.type === "user") {
                         p.classList.add("user-message");
                         p.textContent = msg.content;
@@ -642,7 +671,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         const speakButton = document.createElement("button");
                         speakButton.className = "speak-btn";
                         speakButton.innerHTML = "🔊";
-                        speakButton.onclick = function() { speakText(msg.content); };
+                        speakButton.onclick = function () { speakText(msg.content); };
 
                         container.appendChild(p);
                         container.appendChild(speakButton);
@@ -677,7 +706,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 currentAudio = new Audio(audioUrl);
                 currentAudio.play();
 
-                currentAudio.onended = function() {
+                currentAudio.onended = function () {
                     URL.revokeObjectURL(audioUrl);
                 };
             }
@@ -691,34 +720,51 @@ document.addEventListener("DOMContentLoaded", function() {
         formData.append('action', 'bravur_api_proxy');
         formData.append('api_action', action);
         formData.append('nonce', nonce);
-        
-        Object.keys(data).forEach(function(key) {
+
+        Object.keys(data).forEach(function (key) {
             formData.append('data[' + key + ']', data[key]);
         });
-        
-        const response = await fetch(ajaxUrl, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            throw new Error('HTTP error! status: ' + response.status);
+
+        try {
+            const response = await fetch(ajaxUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                // Try to parse error response as JSON
+                try {
+                    const errorResponse = await response.json();
+                    return Promise.reject({
+                        response: {
+                            status: response.status,
+                            data: errorResponse
+                        }
+                    });
+                } catch (e) {
+                    // If JSON parse fails, throw generic error
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API call failed:', error);
+            throw error;
         }
-        
-        return await response.json();
     }
-    
+
     function addSystemMessage(text) {
         const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
         if (!chatBox) return;
-        
+
         const messageEl = document.createElement('div');
         messageEl.className = 'message system-message';
         messageEl.textContent = text;
         chatBox.appendChild(messageEl);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-    
+
     function enableChat() {
         const inputContainer = document.querySelector('.bravur-chatbot-widget .input-container');
         if (inputContainer) {
@@ -726,7 +772,7 @@ document.addEventListener("DOMContentLoaded", function() {
             inputContainer.style.opacity = '1';
         }
     }
-    
+
     function disableChat() {
         const inputContainer = document.querySelector('.bravur-chatbot-widget .input-container');
         if (inputContainer) {
@@ -734,23 +780,23 @@ document.addEventListener("DOMContentLoaded", function() {
             inputContainer.style.opacity = '0.5';
         }
     }
-    
+
     function showFeedbackOption() {
         const feedbackBtn = document.querySelector('.bravur-chatbot-widget #show-feedback-btn');
         if (feedbackBtn) {
             feedbackBtn.style.display = 'block';
         }
     }
-    
+
     function playAudioFromBase64(audioBase64) {
         try {
-            const audioBytes = Uint8Array.from(atob(audioBase64), function(c) { return c.charCodeAt(0); });
+            const audioBytes = Uint8Array.from(atob(audioBase64), function (c) { return c.charCodeAt(0); });
             const audioBlob = new Blob([audioBytes], { type: "audio/wav" });
             const audioUrl = URL.createObjectURL(audioBlob);
             currentAudio = new Audio(audioUrl);
             currentAudio.play();
 
-            currentAudio.onended = function() {
+            currentAudio.onended = function () {
                 URL.revokeObjectURL(audioUrl);
             };
         } catch (error) {
@@ -759,29 +805,29 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // Global functions for feedback and UI (called from HTML)
-    window.selectSmiley = function(rating) {
+    window.selectSmiley = function (rating) {
         selectedRating = rating;
         const smileys = document.querySelectorAll(".bravur-chatbot-widget .smiley-row span");
-        smileys.forEach(function(el, idx) {
+        smileys.forEach(function (el, idx) {
             el.classList.toggle("selected", idx + 1 === rating);
         });
     };
-    
-    window.showFeedback = function() {
+
+    window.showFeedback = function () {
         const feedbackContainer = document.querySelector('.bravur-chatbot-widget #feedback-container');
         const showBtn = document.querySelector('.bravur-chatbot-widget #show-feedback-btn');
         if (feedbackContainer) feedbackContainer.style.display = "block";
         if (showBtn) showBtn.style.display = "none";
     };
-    
-    window.hideFeedback = function() {
+
+    window.hideFeedback = function () {
         const feedbackContainer = document.querySelector('.bravur-chatbot-widget #feedback-container');
         const showBtn = document.querySelector('.bravur-chatbot-widget #show-feedback-btn');
         if (feedbackContainer) feedbackContainer.style.display = "none";
         if (showBtn) showBtn.style.display = "block";
     };
-    
-    window.enableEditMode = function() {
+
+    window.enableEditMode = function () {
         const commentBox = document.querySelector('.bravur-chatbot-widget #feedback-comment');
         const message = document.querySelector('.bravur-chatbot-widget #feedback-message');
         if (commentBox) commentBox.disabled = false;
@@ -790,8 +836,8 @@ document.addEventListener("DOMContentLoaded", function() {
             message.style.color = "blue";
         }
     };
-    
-    window.submitFeedback = async function() {
+
+    window.submitFeedback = async function () {
         const commentBox = document.querySelector('.bravur-chatbot-widget #feedback-comment');
         const messageDiv = document.querySelector('.bravur-chatbot-widget #feedback-message');
         const comment = commentBox ? commentBox.value : '';
@@ -833,9 +879,9 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
     };
-    
+
     // Policy functions
-    window.showPolicy = function(event) {
+    window.showPolicy = function (event) {
         event.preventDefault();
         const content = document.querySelector('.bravur-chatbot-widget #dropdown-content');
         const container = document.querySelector('.bravur-chatbot-widget #dropdown-content-container');
@@ -847,7 +893,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
-    window.showTerms = function(event) {
+    window.showTerms = function (event) {
         event.preventDefault();
         const content = document.querySelector('.bravur-chatbot-widget #dropdown-content');
         const container = document.querySelector('.bravur-chatbot-widget #dropdown-content-container');
@@ -859,7 +905,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
-    window.showManageData = function(event) {
+    window.showManageData = function (event) {
         event.preventDefault();
         const content = document.querySelector('.bravur-chatbot-widget #dropdown-content');
         const container = document.querySelector('.bravur-chatbot-widget #dropdown-content-container');
@@ -876,7 +922,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
-    window.hideDropdown = function() {
+    window.hideDropdown = function () {
         const content = document.querySelector('.bravur-chatbot-widget #dropdown-content');
         const container = document.querySelector('.bravur-chatbot-widget #dropdown-content-container');
         if (container) {
@@ -887,7 +933,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
-    window.handleWithdrawConsent = async function() {
+    window.handleWithdrawConsent = async function () {
         if (!currentSessionId) {
             addSystemMessage("No session ID available. Please refresh the page.");
             return;
@@ -905,12 +951,12 @@ document.addEventListener("DOMContentLoaded", function() {
             if (response.success && response.data.success) {
                 disableChat();
                 showConsentBubble();
-                
+
                 const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
                 if (chatBox) {
                     chatBox.innerHTML = '';
                 }
-                
+
                 addSystemMessage("Consent withdrawn. Chat disabled and data deleted.");
                 window.hideDropdown();
             } else {
