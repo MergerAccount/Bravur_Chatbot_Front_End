@@ -13,14 +13,7 @@ let currentSessionId = null;
 document.addEventListener("DOMContentLoaded", function() {
     console.log("🔧 Bravur Chatbot WordPress script loaded");
     
-    // Debug: Check for conflicts
-    console.log("🔍 Checking for potential conflicts...");
-    console.log("📦 jQuery version:", typeof $ !== 'undefined' ? $.fn.jquery : 'Not loaded');
-    console.log("🎯 Other chatbots:", document.querySelectorAll('[id*="chat"], [class*="chat"]').length);
-    
-    // Get WordPress localized variables SAFELY
     if (typeof bravurChatbot === 'undefined') {
-        console.error("❌ bravurChatbot variables not found! Plugin assets may not be loading.");
         return;
     }
     
@@ -38,7 +31,6 @@ document.addEventListener("DOMContentLoaded", function() {
     // Check if our chatbot elements exist
     const ourChatbot = document.querySelector('.bravur-chatbot-widget');
     if (!ourChatbot) {
-        console.error("❌ Bravur chatbot widget not found in DOM!");
         return;
     }
     
@@ -46,13 +38,11 @@ document.addEventListener("DOMContentLoaded", function() {
     try {
         initializeChatbot();
     } catch (error) {
-        console.error("💥 Error initializing Bravur chatbot:", error);
     }
     
     function initializeChatbot() {
         setupEventListeners();
         initializeLanguageButtons();
-        //createSessionAndCheckConsent();
         
         // Add welcome message
         const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
@@ -345,7 +335,6 @@ async function createSessionAndCheckConsent() {
         // Use scoped selectors to avoid conflicts
         const bravurWidget = document.querySelector('.bravur-chatbot-widget');
         if (!bravurWidget) {
-            console.error("❌ Bravur widget not found for sendMessage");
             return;
         }
         
@@ -354,11 +343,30 @@ async function createSessionAndCheckConsent() {
         var spinner = bravurWidget.querySelector("#spinner");
         
         if (!userInputField || !chatBox || !spinner) {
-            console.error("❌ Required elements not found in Bravur widget");
             return;
         }
         
         var userInput = userInputField.value.trim();
+       
+        // Validate input length
+        const wordCount = userInput.split(/\s+/).length;
+        const charCount = userInput.length;
+
+        if (wordCount >= 150 || charCount >= 1000) {
+            var container = document.createElement("div");
+            container.className = "bot-message-container";
+
+            var botMsg = document.createElement("p");
+            botMsg.className = "message bot-message";
+            botMsg.textContent = "⚠️ Your message is too long. Please limit it to 150 words or 1000 characters.";
+
+            container.appendChild(botMsg);
+            chatBox.appendChild(container);
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return;
+        }
+
         if (userInput === "") return;
 
         chatBox.innerHTML += '<p class="message user-message">' + userInput + '</p>';
