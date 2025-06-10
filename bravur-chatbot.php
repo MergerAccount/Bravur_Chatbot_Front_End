@@ -29,6 +29,10 @@ class BravurChatbotPlugin {
         // Add AJAX handlers for API proxy
         add_action('wp_ajax_bravur_api_proxy', [$this, 'handle_api_proxy']);
         add_action('wp_ajax_nopriv_bravur_api_proxy', [$this, 'handle_api_proxy']);
+        
+        // Add AJAX handlers for reCAPTCHA verification
+        add_action('wp_ajax_bravur_verify_captcha', 'bravur_verify_captcha');
+        add_action('wp_ajax_nopriv_bravur_verify_captcha', 'bravur_verify_captcha');
     }
 
     public function enqueue_assets() {
@@ -63,6 +67,15 @@ class BravurChatbotPlugin {
             true
         );
         
+        // Enqueue captcha.js after script.js
+        wp_enqueue_script(
+            'bravur-captcha',
+            plugins_url('static/js/captcha.js', __FILE__),
+            [],
+            $this->get_file_version('static/js/captcha.js'),
+            true
+        );
+
         // Localize variables for JavaScript
         wp_localize_script('bravur-chatbot-script', 'bravurChatbot', [
             'api_url' => $this->api_base_url,
@@ -370,3 +383,38 @@ class BravurChatbotPlugin {
 
 // Initialize the plugin
 new BravurChatbotPlugin();
+
+add_action('wp_ajax_nopriv_bravur_verify_captcha', 'bravur_verify_captcha');
+add_action('wp_ajax_bravur_verify_captcha', 'bravur_verify_captcha');
+
+function bravur_verify_captcha() {
+    $secret = '6LfAUlsrAAAAADly6RZplT5H6pzmw78MmSac3q3q'; // your secret key
+    $token = isset($_POST['recaptcha_token']) ? $_POST['recaptcha_token'] : '';
+    $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+
+    if (!$token) {
+        wp_send_json_error(['message' => 'Missing token']);
+    }
+
+    // Verify with Google
+    $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+        'body' => [
+            'secret' => $secret,
+            'response' => $token,
+            'remoteip' => $_SERVER['REMOTE_ADDR']
+        ]
+    ]);
+    $result = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (!empty($result['success'])) {
+        // Notify Flask backend
+        $flask_url = 'http://localhost:5001/api/v1/ratelimit/captcha-solved';
+        $flask_response = wp_remote_post($flask_url, [
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => json_encode(['session_id' => $session_id])
+        ]);
+        wp_send_json_success(['message' => 'CAPTCHA verified']);
+    } else {
+        wp_send_json_error(['message' => 'CAPTCHA verification failed']);
+    }
+}
