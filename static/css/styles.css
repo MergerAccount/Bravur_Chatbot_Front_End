@@ -9,24 +9,24 @@
   --success-hover: #218838;
   --danger-color: #ff0000;
   --danger-hover: #cc0000;
-  
+
   --bg-primary: #f4f4f4;
   --bg-secondary: #fafafa;
   --bg-white: #ffffff;
   --bg-light-gray: #f0f0f0;
   --bg-gray: #e0e0e0;
   --bg-dark-gray: #f1f1f1;
-  
+
   --text-primary: #333333;
   --text-secondary: #666666;
   --text-muted: #999999;
   --text-white: #ffffff;
   --text-black: #000000;
-  
+
   --border-color: #dddddd;
   --border-light: #eeeeee;
   --border-medium: #cccccc;
-  
+
   /* Spacing */
   --spacing-xs: 2px;
   --spacing-sm: 5px;
@@ -35,20 +35,20 @@
   --spacing-xl: 15px;
   --spacing-xxl: 20px;
   --spacing-xxxl: 25px;
-  
+
   /* Border Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 15px;
   --radius-xl: 20px;
   --radius-round: 50%;
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 6px 25px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 10px 40px rgba(0, 0, 0, 0.3);
-  
+
   /* Typography */
   --font-family: Arial, sans-serif;
   --font-size-xs: 11px;
@@ -57,11 +57,11 @@
   --font-size-base: 14px;
   --font-size-lg: 18px;
   --font-size-xl: 24px;
-  
+
   /* Transitions */
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s ease;
-  
+
   /* Layout */
   --chat-width: 400px;
   --chat-height: 400px;
@@ -299,7 +299,7 @@ textarea {
 }
 
 .show-feedback-btn button {
-   padding: 5px 10px;
+  padding: 5px 10px;
   border-radius: 10px;
   border: none;
   background-color: var(--bg-dark-gray);
@@ -378,9 +378,17 @@ textarea {
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* ===== GDPR & Consent Styles ===== */
@@ -596,17 +604,17 @@ textarea {
     --spacing-xl: 12px;
     --spacing-lg: 8px;
   }
-  
+
   .chat-header {
     padding: var(--spacing-md) 0;
   }
-  
+
   .footer-left {
     flex-direction: column;
     align-items: center;
     gap: var(--spacing-lg);
   }
-  
+
   .chatbot-popup {
     width: calc(100vw - 40px);
     max-width: 350px;
@@ -620,4 +628,27 @@ textarea {
     padding: var(--spacing-sm) var(--spacing-sm);
     font-size: var(--font-size-sm);
   }
+}
+
+/* ===== Captcha Model ===== */
+
+.captcha-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.captcha-modal-box {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  text-align: center;
 }
