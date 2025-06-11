@@ -280,7 +280,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function sendMessage() {
+    function sendMessage(message) {
         // Use scoped selectors to avoid conflicts
         const bravurWidget = document.querySelector('.bravur-chatbot-widget');
         if (!bravurWidget) {
@@ -297,11 +297,9 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        var userInput = userInputField.value.trim();
+        // Use the provided message, or fall back to the input field
+        var userInput = typeof message === "string" ? message.trim() : userInputField.value.trim();
         if (userInput === "") return;
-
-        chatBox.innerHTML += '<p class="message user-message">' + userInput + '</p>';
-        userInputField.value = "";
 
         spinner.style.display = "block";
         var startTime = performance.now();
@@ -324,12 +322,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // Handle CAPTCHA response
             if (response.data && response.data.captcha_required) {
+                window.pendingMessage = userInput;
                 spinner.style.display = "none";
                 if (typeof checkAndMaybeTriggerCaptcha === 'function') {
                     checkAndMaybeTriggerCaptcha(response.data.count, response.data.limit);
                 }
                 return;
             }
+
+            // Only now show the user message and clear the input
+            chatBox.innerHTML += '<p class="message user-message">' + userInput + '</p>';
+            userInputField.value = "";
 
             if (response.success && response.data.response) {
                 spinner.textContent = "🕒 Responded in " + finalTime.toFixed(1) + "s";
@@ -765,13 +768,15 @@ document.addEventListener("DOMContentLoaded", function () {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function enableChat() {
+    window.enableChat = function () {
         const inputContainer = document.querySelector('.bravur-chatbot-widget .input-container');
         if (inputContainer) {
             inputContainer.style.pointerEvents = 'auto';
             inputContainer.style.opacity = '1';
         }
-    }
+        const input = document.querySelector('.input-container input, .input-container textarea');
+        if (input) input.disabled = false;
+    };
 
     function disableChat() {
         const inputContainer = document.querySelector('.bravur-chatbot-widget .input-container');
@@ -965,6 +970,12 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
             console.error("Error withdrawing consent:", error);
             addSystemMessage("Error withdrawing consent. Please try again.");
+        }
+    };
+
+    window.checkAndMaybeTriggerCaptcha = function (current, limit) {
+        if (current >= Math.floor(limit * 0.9)) {
+            showCaptchaModal();
         }
     };
 });
