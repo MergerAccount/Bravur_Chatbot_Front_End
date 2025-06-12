@@ -84,6 +84,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 modal.remove();
                 grecaptcha.reset(captchaWidgetId);
 
+                // Notify backend that captcha was solved (reset fingerprint/session rate limit)
+                if (window.bravurFingerprint && sessionId) {
+                    fetch('http://localhost:5001/api/v1/ratelimit/captcha-solved', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            fingerprint: window.bravurFingerprint,
+                            session_id: sessionId
+                        })
+                    }).then(res => res.json())
+                      .then(data => {
+                          console.log('Captcha solved notification sent:', data);
+                      })
+                      .catch(err => {
+                          console.warn('Failed to notify backend of captcha solved:', err);
+                      });
+                }
+
                 // Resend the blocked message if there is one
                 if (window.pendingMessage) {
                     if (typeof window.sendMessage === 'function') {

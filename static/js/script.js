@@ -37,9 +37,52 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Initialize chatbot with protection
     try {
-        initializeChatbot();
+        generateFingerprint().then(() => {
+            initializeChatbot();
+        });
     } catch (error) {
         console.error("💥 Error initializing Bravur chatbot:", error);
+    }
+
+    // 1. Load FingerprintJS v3 from CDN if not present
+    if (!window.FingerprintJS) {
+        const fpScript = document.createElement('script');
+        fpScript.src = 'https://openfpcdn.io/fingerprintjs/v3.3.6/fingerprintjs.umd.min.js'; // UMD build for browsers
+        fpScript.async = true;
+        document.head.appendChild(fpScript);
+    }
+
+    let bravurFingerprint = null;
+
+    // 2. Generate fingerprint and return a Promise
+    function loadFingerprintJSScript() {
+        return new Promise((resolve, reject) => {
+            if (window.Fingerprint2) {
+                resolve();
+                return;
+            }
+            const fpScript = document.createElement('script');
+            fpScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/fingerprintjs2/2.1.0/fingerprint2.min.js';
+            fpScript.async = true;
+            fpScript.onload = resolve;
+            fpScript.onerror = reject;
+            document.head.appendChild(fpScript);
+        });
+    }
+
+    function generateFingerprint() {
+        return loadFingerprintJSScript().then(() => {
+            return new Promise((resolve) => {
+                Fingerprint2.get(components => {
+                    const values = components.map(component => component.value);
+                    const murmur = Fingerprint2.x64hash128(values.join(''), 31);
+                    bravurFingerprint = murmur;
+                    window.bravurFingerprint = murmur;
+                    console.log('🔑 FingerprintJS2 visitorId:', murmur);
+                    resolve();
+                });
+            });
+        });
     }
 
     function initializeChatbot() {
@@ -315,7 +358,8 @@ document.addEventListener("DOMContentLoaded", function () {
         makeWordPressAPICall('chat', {
             user_input: userInput,
             session_id: currentSessionId,
-            language: selectedLanguage
+            language: selectedLanguage,
+            fingerprint: bravurFingerprint
         }).then(function (response) {
             clearInterval(timerInterval);
             var finalTime = (performance.now() - startTime) / 1000;
@@ -359,7 +403,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 showFeedbackOption();
                 // 🔐 After bot response, check if rate limit is near the threshold
-                fetch(`${apiUrl}/ratelimit/check/${currentSessionId}`)
+                fetch(`${apiUrl}/ratelimit/check`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        fingerprint: bravurFingerprint
+                    })
+                })
                     .then(res => res.json())
                     .then(data => {
                         if (data.success && typeof checkAndMaybeTriggerCaptcha === 'function') {
@@ -727,6 +780,11 @@ document.addEventListener("DOMContentLoaded", function () {
         Object.keys(data).forEach(function (key) {
             formData.append('data[' + key + ']', data[key]);
         });
+
+        // In makeWordPressAPICall, add fingerprint to FormData if present
+        if (bravurFingerprint) {
+            formData.append('data[fingerprint]', bravurFingerprint);
+        }
 
         try {
             const response = await fetch(ajaxUrl, {
