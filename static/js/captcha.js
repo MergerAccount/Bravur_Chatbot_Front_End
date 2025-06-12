@@ -28,12 +28,20 @@ document.addEventListener("DOMContentLoaded", function () {
         modal.className = "captcha-modal";
 
         const box = document.createElement("div");
-        box.className = "captcha-modal-box";
+        box.className = "captcha-modal-box captcha-animate-in";
         box.innerHTML = `
+        <div class="captcha-modal-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="24" r="24" fill="#007bff"/>
+            <path d="M16 32c0-4 8-4 8-8V16" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="36" r="2" fill="#fff"/>
+          </svg>
+        </div>
+        <button class="captcha-modal-close" title="Close">&times;</button>
         <h3>Please verify you're human</h3>
         <div id="recaptcha-container"></div>
         <br>
-        <button id="captcha-submit-btn" style="padding: 10px 20px;">Submit</button>
+        <button id="captcha-submit-btn" class="btn btn-primary">Submit</button>
         `;
 
         modal.appendChild(box);
@@ -87,6 +95,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 alert("CAPTCHA verification failed. Please try again.");
                 grecaptcha.reset(captchaWidgetId);
             }
+        };
+
+        // Add close button event
+        box.querySelector('.captcha-modal-close').onclick = function() {
+            modal.remove();
         };
     };
 
