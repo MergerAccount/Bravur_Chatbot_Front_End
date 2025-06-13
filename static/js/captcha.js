@@ -107,6 +107,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Resend the blocked message if there is one
                 if (window.pendingMessage) {
                     if (typeof window.sendMessage === 'function') {
+                        // Remove pending state from the message element if present
+                        if (window.pendingMessageElement) {
+                            window.pendingMessageElement.classList.remove('pending-message');
+                            window.pendingMessageElement = null;
+                        }
                         window.sendMessage(window.pendingMessage);
                     }
                     window.pendingMessage = null;
