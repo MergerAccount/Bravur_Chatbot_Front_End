@@ -248,10 +248,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (sessionResponse.success && sessionResponse.data.session_id) {
                 currentSessionId = sessionResponse.data.session_id;
-                const sessionEl = document.querySelector('.bravur-chatbot-widget #session-id');
-                if (sessionEl) {
-                    sessionEl.textContent = currentSessionId;
-                }
 
                 // Set session ID as data attribute
                 const bravurWidget = document.querySelector('.bravur-chatbot-widget');
