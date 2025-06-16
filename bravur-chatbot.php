@@ -12,7 +12,7 @@ class BravurChatbotPlugin {
     private $api_base_url;
 
     public function __construct() {
-        $this->api_base_url = 'http://localhost:5001/api/v1';
+        $this->api_base_url = 'https://bravur-chatbot-api-bwepc9bna4fvg8fn.westeurope-01.azurewebsites.net/api/v1/ratelimit/captcha-solved';
         
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_footer', [$this, 'render_chatbot']);
@@ -351,7 +351,7 @@ function bravur_verify_captcha() {
 
     if (!empty($result['success'])) {
         // Notify Flask backend
-        $flask_url = 'http://localhost:5001/api/v1/ratelimit/captcha-solved';
+        $flask_url = 'https://bravur-chatbot-api-bwepc9bna4fvg8fn.westeurope-01.azurewebsites.net/api/v1/ratelimit/captcha-solved';
         $flask_response = wp_remote_post($flask_url, [
             'headers' => ['Content-Type' => 'application/json'],
             'body' => json_encode(['session_id' => $session_id])
