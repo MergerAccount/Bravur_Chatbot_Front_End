@@ -344,6 +344,14 @@ document.addEventListener("DOMContentLoaded", function () {
         var userInput = typeof message === "string" ? message.trim() : userInputField.value.trim();
         if (userInput === "") return;
 
+        // Optimistic UI: show user message and clear input immediately
+        const userMsgEl = document.createElement('p');
+        userMsgEl.className = 'message user-message';
+        userMsgEl.textContent = userInput;
+        chatBox.appendChild(userMsgEl);
+        userInputField.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
         spinner.style.display = "block";
         var startTime = performance.now();
         var elapsed = 0;
@@ -367,16 +375,18 @@ document.addEventListener("DOMContentLoaded", function () {
             // Handle CAPTCHA response
             if (response.data && response.data.captcha_required) {
                 window.pendingMessage = userInput;
+                // Remove the user message from chat
+                if (userMsgEl && userMsgEl.parentNode) {
+                    userMsgEl.parentNode.removeChild(userMsgEl);
+                }
+                // Restore the input field
+                userInputField.value = userInput;
                 spinner.style.display = "none";
                 if (typeof checkAndMaybeTriggerCaptcha === 'function') {
                     checkAndMaybeTriggerCaptcha(response.data.count, response.data.limit);
                 }
                 return;
             }
-
-            // Only now show the user message and clear the input
-            chatBox.innerHTML += '<p class="message user-message">' + userInput + '</p>';
-            userInputField.value = "";
 
             if (response.success && response.data.response) {
                 spinner.textContent = "🕒 Responded in " + finalTime.toFixed(1) + "s";
