@@ -1,14 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
-    console.log("🔧 Bravur Chatbot WordPress script loaded");
-
-    // Debug: Check for conflicts
-    console.log("🔍 Checking for potential conflicts...");
-    console.log("📦 jQuery version:", typeof $ !== 'undefined' ? $.fn.jquery : 'Not loaded');
-    console.log("🎯 Other chatbots:", document.querySelectorAll('[id*="chat"], [class*="chat"]').length);
+    console.log(" Bravur Chatbot WordPress script loaded");
+    console.log(" Checking for potential conflicts...");
+    console.log(" jQuery version:", typeof $ !== 'undefined' ? $.fn.jquery : 'Not loaded');
+    console.log(" Other chatbots:", document.querySelectorAll('[id*="chat"], [class*="chat"]').length);
 
     // Get WordPress localized variables SAFELY
     if (typeof bravurChatbot === 'undefined') {
-        console.error("❌ bravurChatbot variables not found! Plugin assets may not be loading.");
         return;
     }
 
@@ -26,7 +23,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Check if our chatbot elements exist
     const ourChatbot = document.querySelector('.bravur-chatbot-widget');
     if (!ourChatbot) {
-        console.error("❌ Bravur chatbot widget not found in DOM!");
         return;
     }
 
@@ -88,7 +84,6 @@ document.addEventListener("DOMContentLoaded", function () {
     function initializeChatbot() {
         setupEventListeners();
         initializeLanguageButtons();
-        createSessionAndCheckConsent();
 
         // Add welcome message
         const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
@@ -102,70 +97,103 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+
+    function initializeChatbot() {
+        setupEventListeners();
+        initializeLanguageButtons();
+
+        const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
+        if (chatBox) {
+            chatBox.innerHTML += '<p class="message bot-message">How can I help you?</p>';
+        }
+
+    }
+
+
     function setupEventListeners() {
-        // Use more specific selectors to avoid conflicts
         const bravurWidget = document.querySelector('.bravur-chatbot-widget');
         if (!bravurWidget) {
-            console.error("❌ Bravur widget container not found!");
             return;
         }
 
-        // Toggle button for floating widget
-        const toggleBtn = bravurWidget.querySelector('.chatbot-toggle-btn');
+        const toggleBtn = bravurWidget.querySelector('#chatbot-toggle-btn'); // Fixed selector
         const container = bravurWidget.querySelector('#chatbot-container');
 
         if (toggleBtn && container) {
-            toggleBtn.addEventListener('click', function (e) {
+            toggleBtn.addEventListener('click', async function (e) {
                 e.preventDefault();
+
+                if (!currentSessionId) {
+                    await createSessionAndCheckConsent();
+                }
+
                 container.classList.toggle('chatbot-hidden');
                 const icon = toggleBtn.querySelector('#toggle-icon');
                 if (icon) {
                     icon.textContent = container.classList.contains('chatbot-hidden') ? '💬' : '×';
                 }
-                console.log("🎯 Bravur floating widget toggle clicked");
             });
         }
 
-        // Send button
         const sendBtn = bravurWidget.querySelector('#send-btn');
         if (sendBtn) {
-            sendBtn.addEventListener('click', function (e) {
+            sendBtn.addEventListener('click', async function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Ensure session exists before sending message
+                if (!currentSessionId) {
+                    await createSessionAndCheckConsent();
+                }
+
                 sendMessage();
             });
         }
 
-        // Enter key in input
         const userInput = bravurWidget.querySelector('#user-input');
         if (userInput) {
-            userInput.addEventListener('keydown', function (event) {
+            userInput.addEventListener('keydown', async function (event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
                     event.stopPropagation();
+
+                    if (!currentSessionId) {
+                        await createSessionAndCheckConsent();
+                    }
+
                     sendMessage();
                 }
             });
         }
 
-        // Voice chat button
         const voiceChatBtn = bravurWidget.querySelector('#voice-chat-btn');
         if (voiceChatBtn) {
-            voiceChatBtn.addEventListener('click', function (e) {
+            voiceChatBtn.addEventListener('click', async function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Ensure session exists before voice input
+                if (!currentSessionId) {
+                    await createSessionAndCheckConsent();
+                }
+
                 handleVoiceInput();
             });
         }
 
-        // Speech-to-Speech button
         const stsBtn = bravurWidget.querySelector('#sts-btn');
         if (stsBtn) {
             stsBtn.innerHTML = "🤖";
             stsBtn.title = "Use Voice Mode 🤖";
-            stsBtn.addEventListener('click', function (e) {
+            stsBtn.addEventListener('click', async function (e) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                if (!currentSessionId) {
+                    console.log("🚀 Creating session before STS...");
+                    await createSessionAndCheckConsent();
+                }
+
                 handleStsButtonClick();
             });
         }
@@ -180,7 +208,44 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        console.log("✅ Bravur event listeners attached safely");
+        if (container && !container.classList.contains('chatbot-hidden')) {
+            createSessionAndCheckConsent();
+        }
+    }
+
+
+    async function createSessionAndCheckConsent() {
+        if (currentSessionId) {
+            return currentSessionId;
+        }
+
+
+        try {
+            const sessionResponse = await makeWordPressAPICall('create_session', {});
+
+            if (sessionResponse.success && sessionResponse.data.session_id) {
+                currentSessionId = sessionResponse.data.session_id;
+                const sessionEl = document.querySelector('.bravur-chatbot-widget #session-id');
+                if (sessionEl) {
+                    sessionEl.textContent = currentSessionId;
+                }
+
+                const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
+                if (chatBox && chatBox.innerHTML.includes('Click to start chatting')) {
+                    chatBox.innerHTML = '<p class="message bot-message">Welcome to Bravur AI Chatbot! How can I help you today?</p>';
+                }
+
+                await loadMessageHistory();
+
+                await checkConsentStatus();
+
+                return currentSessionId;
+            } else {
+                return null;
+            }
+        } catch (error) {
+            return null;
+        }
     }
 
     function initializeLanguageButtons() {
@@ -234,17 +299,17 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function createSessionAndCheckConsent() {
-        console.log('🚀 Starting session creation...');
-        console.log('📍 Current URL:', window.location.href);
-        console.log('🔧 AJAX URL:', ajaxUrl);
-        console.log('🎫 Nonce:', nonce);
+        console.log(' Starting session creation...');
+        console.log(' Current URL:', window.location.href);
+        console.log(' AJAX URL:', ajaxUrl);
+        console.log(' Nonce:', nonce);
 
         try {
-            console.log('📡 Making AJAX call to create session...');
+            console.log(' Making AJAX call to create session...');
 
             const sessionResponse = await makeWordPressAPICall('create_session', {});
 
-            console.log('📨 Session response received:', sessionResponse);
+            console.log(' Session response received:', sessionResponse);
 
             if (sessionResponse.success && sessionResponse.data.session_id) {
                 currentSessionId = sessionResponse.data.session_id;
@@ -263,7 +328,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 checkConsentStatus();
             } else {
-                console.error('❌ Failed to create session:', sessionResponse);
                 addSystemMessage('Failed to initialize chatbot. Please refresh the page.');
             }
         } catch (error) {
@@ -327,7 +391,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // Use scoped selectors to avoid conflicts
         const bravurWidget = document.querySelector('.bravur-chatbot-widget');
         if (!bravurWidget) {
-            console.error("❌ Bravur widget not found for sendMessage");
             return;
         }
 
@@ -336,12 +399,31 @@ document.addEventListener("DOMContentLoaded", function () {
         var spinner = bravurWidget.querySelector("#spinner");
 
         if (!userInputField || !chatBox || !spinner) {
-            console.error("❌ Required elements not found in Bravur widget");
             return;
         }
 
         // Use the provided message, or fall back to the input field
         var userInput = typeof message === "string" ? message.trim() : userInputField.value.trim();
+
+        // Validate input length
+        const wordCount = userInput.split(/\s+/).length;
+        const charCount = userInput.length;
+
+        if (wordCount >= 150 || charCount >= 1000) {
+            var container = document.createElement("div");
+            container.className = "bot-message-container";
+
+            var botMsg = document.createElement("p");
+            botMsg.className = "message bot-message";
+            botMsg.textContent = "⚠️ Your message is too long. Please limit it to 150 words or 1000 characters.";
+
+            container.appendChild(botMsg);
+            chatBox.appendChild(container);
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return;
+        }
+
         if (userInput === "") return;
 
         spinner.style.display = "block";
