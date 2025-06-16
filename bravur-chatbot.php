@@ -12,7 +12,7 @@ class BravurChatbotPlugin {
     private $api_base_url;
 
     public function __construct() {
-        $this->api_base_url = 'https://bravur-chatbot-api-bwepc9bna4fvg8fn.westeurope-01.azurewebsites.net/api/v1/ratelimit/captcha-solved';
+        $this->api_base_url = 'https://bravur-chatbot-api-bwepc9bna4fvg8fn.westeurope-01.azurewebsites.net/api/v1';
         
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_footer', [$this, 'render_chatbot']);
