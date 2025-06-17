@@ -1,3 +1,13 @@
+let isListening = false;
+let isRecording = false;
+let selectedLanguage = "nl-NL"; 
+let selectedRating = null;
+let currentAudio = null;
+let audioStream = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let bravurFingerprint = null;
+
 document.addEventListener("DOMContentLoaded", function () {
     console.log(" Bravur Chatbot WordPress script loaded");
     console.log(" Checking for potential conflicts...");
