@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Bravur AI Chatbot
-Description: Complete WordPress chatbot plugin with full GDPR, feedback, and voice features
+Description: Complete WordPress chatbot plugin with full GDPR, feedback, and voice features  
 Version: 2.1.0
 Author: Bravur Team
 */
@@ -12,41 +12,24 @@ class BravurChatbotPlugin {
     private $api_base_url;
 
     public function __construct() {
-        $this->api_base_url = 'http://localhost:5001/api/v1';
+        $this->api_base_url = 'https://bravur-chatbot-api-bwepc9bna4fvg8fn.westeurope-01.azurewebsites.net/api/v1';
         
-        // Try multiple hooks for asset loading
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
-        add_action('wp_head', [$this, 'enqueue_assets']); // Backup hook
-        add_action('init', [$this, 'enqueue_assets']); // Early hook
-        
-        // Try multiple hooks to ensure loading
         add_action('wp_footer', [$this, 'render_chatbot']);
-        add_action('wp_head', [$this, 'add_early_chatbot']); // Backup hook
-        add_action('init', [$this, 'force_chatbot_everywhere']); // Force hook
-        
         add_shortcode('bravur_chatbot', [$this, 'shortcode']);
         
-        // Add AJAX handlers for API proxy
         add_action('wp_ajax_bravur_api_proxy', [$this, 'handle_api_proxy']);
         add_action('wp_ajax_nopriv_bravur_api_proxy', [$this, 'handle_api_proxy']);
+        
+        // Add AJAX handlers for reCAPTCHA verification
+        add_action('wp_ajax_bravur_verify_captcha', 'bravur_verify_captcha');
+        add_action('wp_ajax_nopriv_bravur_verify_captcha', 'bravur_verify_captcha');
     }
 
     public function enqueue_assets() {
-        // Only skip on admin pages
         if (is_admin()) return;
         
-        // DEBUG: Log what type of page this is
-        error_log('🏠 Bravur Chatbot Loading on: ' . $_SERVER['REQUEST_URI']);
-        error_log('📍 is_front_page: ' . (is_front_page() ? 'YES' : 'NO'));
-        error_log('📍 is_home: ' . (is_home() ? 'YES' : 'NO'));
-        error_log('📍 is_page: ' . (is_page() ? 'YES' : 'NO'));
-        
-        // Add visible debug for assets
-        if (current_user_can('administrator')) {
-            echo '<script>console.log("💾 Bravur: Assets enqueued on ' . $_SERVER['REQUEST_URI'] . '");</script>';
-        }
-        
-        // CSS - load your styles.css file
+        // CSS
         wp_enqueue_style(
             'bravur-chatbot-css', 
             plugins_url('static/css/styles.css', __FILE__),
@@ -63,28 +46,29 @@ class BravurChatbotPlugin {
             true
         );
         
+        // Enqueue captcha.js after script.js
+        wp_enqueue_script(
+            'bravur-captcha',
+            plugins_url('static/js/captcha.js', __FILE__),
+            [],
+            $this->get_file_version('static/js/captcha.js'),
+            true
+        );
+
         // Localize variables for JavaScript
         wp_localize_script('bravur-chatbot-script', 'bravurChatbot', [
             'api_url' => $this->api_base_url,
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('bravur_chatbot_nonce'),
-            'session_id' => $this->generate_session_id(),
+            'session_id' => null, // Start with null, create when needed
             'plugin_url' => plugins_url('', __FILE__)
         ]);
         
-        error_log('✅ Bravur Chatbot assets enqueued');
+        error_log('✅ Bravur Chatbot assets enqueued (no session created yet)');
     }
 
     public function render_chatbot() {
-        // Only skip on admin pages
         if (is_admin()) return;
-        
-        error_log('🤖 Bravur Chatbot rendering on: ' . $_SERVER['REQUEST_URI']);
-        error_log('🔍 Template: ' . get_page_template());
-        error_log('🎯 Theme: ' . get_template());
-        error_log('📄 is_404: ' . (is_404() ? 'YES' : 'NO'));
-        
-        
         echo $this->get_chatbot_html();
     }
 
@@ -98,30 +82,26 @@ class BravurChatbotPlugin {
 
     private function get_chatbot_html($embedded = false) {
         if ($embedded) {
-            // For shortcode usage - use embedded template
             $template_file = plugin_dir_path(__FILE__) . 'static/templates/embedded.html';
         } else {
-            // For floating widget - use widget template  
             $template_file = plugin_dir_path(__FILE__) . 'static/templates/index.html';
         }
         
         if (file_exists($template_file)) {
-            $session_id = $this->generate_session_id();
             $content = file_get_contents($template_file);
             
-            // Replace any session ID placeholders
-            $content = str_replace('{{SESSION_ID}}', esc_html($session_id), $content);
-            $content = str_replace('Loading...', esc_html($session_id), $content);
+            // FIXED: Use placeholder that JavaScript will replace
+            $content = str_replace('{{SESSION_ID}}', 'loading...', $content);
+            $content = str_replace('Loading...', 'loading...', $content);
             
             return $content;
         }
         
-        // If no template found, show error
-        return '<div class="bravur-chatbot-error">Bravur Chatbot: Template file not found at ' . $template_file . '</div>';
+        // Fallback HTML with placeholder
+        return $this->get_fallback_html($embedded);
     }
     
     private function get_fallback_html($embedded = false) {
-        $session_id = $this->generate_session_id();
         $widget_class = $embedded ? 'bravur-chatbot-embedded' : 'bravur-chatbot-widget';
         
         return '
@@ -146,7 +126,6 @@ class BravurChatbotPlugin {
                         <div class="typing-indicator">AI is typing...</div>
                     </div>
 
-                    <!-- Consent Chat Bubble -->
                     <div id="consent-bubble" class="consent-bubble" style="display: none;">
                         <div class="consent-message">
                             <p>We use cookies and collect data to improve your experience. Please accept to continue using the chatbot.</p>
@@ -162,7 +141,7 @@ class BravurChatbotPlugin {
                     </div>
 
                     <div class="session-info">
-                        Session ID: <span id="session-id">' . esc_html($session_id) . '</span>
+                        Session ID: <span id="session-id">loading...</span>
                     </div>
 
                     <div class="show-feedback-btn" id="show-feedback-btn" style="display: none;">
@@ -198,63 +177,41 @@ class BravurChatbotPlugin {
         </div>';
     }
 
-    public function add_early_chatbot() {
-        // Only add if not already added
-        if (!is_admin()) {
-            echo '<script>console.log("🔧 Bravur: Early hook fired on ' . $_SERVER['REQUEST_URI'] . '");</script>';
+    private function create_session_via_api() {
+        error_log('🔄 Creating session via API...');
+        
+        $response = wp_remote_post($this->api_base_url . '/session/create', [
+            'timeout' => 15,
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => json_encode([]),
+            'sslverify' => false
+        ]);
+        
+        if (is_wp_error($response)) {
+            error_log('❌ Session creation failed: ' . $response->get_error_message());
+            return null;
         }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+        
+        error_log('📊 Session API Response Code: ' . $response_code);
+        error_log('📄 Session API Response Body: ' . $body);
+        
+        if ($response_code === 200) {
+            $data = json_decode($body, true);
+            if ($data && isset($data['session_id'])) {
+                error_log('✅ Session created: ' . $data['session_id']);
+                return $data['session_id'];
+            }
+        }
+        
+        error_log('❌ Session creation failed');
+        return null;
     }
     
-    public function force_chatbot_everywhere() {
-        // Force render via JavaScript injection if normal hooks fail
-        if (!is_admin()) {
-            add_action('wp_print_footer_scripts', function() {
-                echo '<script>
-                console.log("🚀 Bravur: Force hook fired on ' . $_SERVER['REQUEST_URI'] . '");
-                
-                // Check if our script loaded
-                if (typeof bravurChatbot === "undefined") {
-                    console.log("⚠️ Bravur: Script not loaded, forcing manual load...");
-                    
-                    // Force load CSS
-                    var css = document.createElement("link");
-                    css.rel = "stylesheet";
-                    css.href = "' . plugins_url('static/css/styles.css', __FILE__) . '?v=' . time() . '";
-                    document.head.appendChild(css);
-                    
-                    // Force load JS
-                    var script = document.createElement("script");
-                    script.src = "' . plugins_url('static/js/script.js', __FILE__) . '?v=' . time() . '";
-                    script.onload = function() {
-                        console.log("✅ Bravur: Script force-loaded");
-                        // Set up variables manually
-                        window.bravurChatbot = {
-                            api_url: "' . $this->api_base_url . '",
-                            ajax_url: "' . admin_url('admin-ajax.php') . '",
-                            nonce: "' . wp_create_nonce('bravur_chatbot_nonce') . '",
-                            session_id: "' . $this->generate_session_id() . '",
-                            plugin_url: "' . plugins_url('', __FILE__) . '"
-                        };
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    console.log("✅ Bravur: Script already loaded properly");
-                }
-                </script>';
-            });
-        }
-    }
-
-    /**
-     * Generate a unique session ID
-     */
-    private function generate_session_id() {
-        return 'wp_' . uniqid() . '_' . time();
-    }
-    
-    /**
-     * Get file version for cache busting
-     */
     private function get_file_version($file_path) {
         $full_path = plugin_dir_path(__FILE__) . $file_path;
         if (file_exists($full_path)) {
@@ -267,12 +224,9 @@ class BravurChatbotPlugin {
      * Handle API proxy requests from JavaScript
      */
     public function handle_api_proxy() {
-        // Log the request for debugging
         error_log('🚀 Bravur API Proxy called');
-        error_log('📍 Request URI: ' . $_SERVER['REQUEST_URI']);
         error_log('📡 POST data: ' . print_r($_POST, true));
         
-        // Verify nonce for security
         if (!wp_verify_nonce($_POST['nonce'], 'bravur_chatbot_nonce')) {
             error_log('❌ Nonce verification failed');
             wp_die('Security check failed');
@@ -282,9 +236,19 @@ class BravurChatbotPlugin {
         $data = $_POST['data'] ?? [];
         
         error_log('🎯 API Action: ' . $action);
-        error_log('📦 Data: ' . print_r($data, true));
         
-        // Determine which API endpoint to call
+        // Handle session creation separately
+        if ($action === 'create_session') {
+            $session_id = $this->create_session_via_api();
+            if ($session_id) {
+                wp_send_json_success(['session_id' => $session_id]);
+            } else {
+                wp_send_json_error(['message' => 'Failed to create session']);
+            }
+            return;
+        }
+        
+        // Handle other API calls
         $endpoint = $this->get_api_endpoint($action);
         if (!$endpoint) {
             error_log('❌ Invalid API endpoint for action: ' . $action);
@@ -292,12 +256,7 @@ class BravurChatbotPlugin {
             return;
         }
         
-        error_log('🎯 Using endpoint: ' . $endpoint);
-        
-        // Make the API call
         $response = $this->make_api_call($endpoint, $data);
-        
-        error_log('📨 API Response: ' . print_r($response, true));
         
         if (is_wp_error($response)) {
             error_log('💥 WP Error: ' . $response->get_error_message());
@@ -307,7 +266,6 @@ class BravurChatbotPlugin {
             $response_code = wp_remote_retrieve_response_code($response);
             
             error_log('📊 Response Code: ' . $response_code);
-            error_log('📄 Response Body: ' . $body);
             
             $decoded = json_decode($body, true);
             
@@ -322,7 +280,6 @@ class BravurChatbotPlugin {
     
     private function get_api_endpoint($action) {
         $endpoints = [
-            'create_session' => '/session/create',
             'chat' => '/chat',
             'consent_check' => '/consent/check',
             'consent_accept' => '/consent/accept',
@@ -352,8 +309,7 @@ class BravurChatbotPlugin {
             ]
         ];
         
-        // Handle different HTTP methods based on endpoint
-        if (in_array($endpoint, ['/session/create', '/chat', '/consent/accept', '/consent/withdraw', '/feedback'])) {
+        if (in_array($endpoint, ['/chat', '/consent/accept', '/consent/withdraw', '/feedback'])) {
             $args['method'] = 'POST';
             $args['body'] = json_encode($data);
         } else if (strpos($endpoint, '/consent/check/') === 0) {
@@ -370,3 +326,38 @@ class BravurChatbotPlugin {
 
 // Initialize the plugin
 new BravurChatbotPlugin();
+
+add_action('wp_ajax_nopriv_bravur_verify_captcha', 'bravur_verify_captcha');
+add_action('wp_ajax_bravur_verify_captcha', 'bravur_verify_captcha');
+
+function bravur_verify_captcha() {
+    $secret = '6LfAUlsrAAAAADly6RZplT5H6pzmw78MmSac3q3q'; // your secret key
+    $token = isset($_POST['recaptcha_token']) ? $_POST['recaptcha_token'] : '';
+    $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+
+    if (!$token) {
+        wp_send_json_error(['message' => 'Missing token']);
+    }
+
+    // Verify with Google
+    $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+        'body' => [
+            'secret' => $secret,
+            'response' => $token,
+            'remoteip' => $_SERVER['REMOTE_ADDR']
+        ]
+    ]);
+    $result = json_decode(wp_remote_retrieve_body($response), true);
+
+    if (!empty($result['success'])) {
+        // Notify Flask backend
+        $flask_url = 'https://bravur-chatbot-api-bwepc9bna4fvg8fn.westeurope-01.azurewebsites.net/api/v1/ratelimit/captcha-solved';
+        $flask_response = wp_remote_post($flask_url, [
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => json_encode(['session_id' => $session_id])
+        ]);
+        wp_send_json_success(['message' => 'CAPTCHA verified']);
+    } else {
+        wp_send_json_error(['message' => 'CAPTCHA verification failed']);
+    }
+}

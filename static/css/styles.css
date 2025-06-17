@@ -9,24 +9,24 @@
   --success-hover: #218838;
   --danger-color: #ff0000;
   --danger-hover: #cc0000;
-  
+
   --bg-primary: #f4f4f4;
   --bg-secondary: #fafafa;
   --bg-white: #ffffff;
   --bg-light-gray: #f0f0f0;
   --bg-gray: #e0e0e0;
   --bg-dark-gray: #f1f1f1;
-  
+
   --text-primary: #333333;
   --text-secondary: #666666;
   --text-muted: #999999;
   --text-white: #ffffff;
   --text-black: #000000;
-  
+
   --border-color: #dddddd;
   --border-light: #eeeeee;
   --border-medium: #cccccc;
-  
+
   /* Spacing */
   --spacing-xs: 2px;
   --spacing-sm: 5px;
@@ -35,20 +35,20 @@
   --spacing-xl: 15px;
   --spacing-xxl: 20px;
   --spacing-xxxl: 25px;
-  
+
   /* Border Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 15px;
   --radius-xl: 20px;
   --radius-round: 50%;
-  
+
   /* Shadows */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 6px 25px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 10px 40px rgba(0, 0, 0, 0.3);
-  
+
   /* Typography */
   --font-family: Arial, sans-serif;
   --font-size-xs: 11px;
@@ -57,11 +57,11 @@
   --font-size-base: 14px;
   --font-size-lg: 18px;
   --font-size-xl: 24px;
-  
+
   /* Transitions */
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s ease;
-  
+
   /* Layout */
   --chat-width: 400px;
   --chat-height: 400px;
@@ -299,7 +299,7 @@ textarea {
 }
 
 .show-feedback-btn button {
-   padding: 5px 10px;
+  padding: 5px 10px;
   border-radius: 10px;
   border: none;
   background-color: var(--bg-dark-gray);
@@ -378,9 +378,17 @@ textarea {
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* ===== GDPR & Consent Styles ===== */
@@ -596,17 +604,17 @@ textarea {
     --spacing-xl: 12px;
     --spacing-lg: 8px;
   }
-  
+
   .chat-header {
     padding: var(--spacing-md) 0;
   }
-  
+
   .footer-left {
     flex-direction: column;
     align-items: center;
     gap: var(--spacing-lg);
   }
-  
+
   .chatbot-popup {
     width: calc(100vw - 40px);
     max-width: 350px;
@@ -619,5 +627,101 @@ textarea {
   .manage-consent-btn {
     padding: var(--spacing-sm) var(--spacing-sm);
     font-size: var(--font-size-sm);
+  }
+}
+
+/* ===== Captcha Model ===== */
+.captcha-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: captcha-fade-in 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+.captcha-modal-box {
+  background: #fff;
+  padding: 36px 32px 32px 32px;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  text-align: center;
+  position: relative;
+  border: 3px solid;
+  border-image: linear-gradient(135deg, #007bff 0%, #00c6ff 100%) 1;
+  min-width: 320px;
+  max-width: 90vw;
+  animation: captcha-box-in 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+.captcha-modal-icon {
+  margin-bottom: 12px;
+  animation: captcha-icon-pop 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+.captcha-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #aaa;
+  cursor: pointer;
+  transition: color 0.2s;
+  z-index: 2;
+}
+.captcha-modal-close:hover {
+  color: #007bff;
+}
+
+@keyframes captcha-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes captcha-box-in {
+  from { transform: scale(0.85) translateY(40px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes captcha-icon-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.captcha-modal-box h3 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  font-size: 1.3rem;
+  color: #007bff;
+  letter-spacing: 0.01em;
+}
+
+.captcha-modal-box .btn-primary, #captcha-submit-btn.btn-primary {
+  background: linear-gradient(90deg, #007bff 0%, #00c6ff 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,123,255,0.10);
+  margin-top: 10px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.captcha-modal-box .btn-primary:hover, #captcha-submit-btn.btn-primary:hover {
+  background: linear-gradient(90deg, #0056b3 0%, #00aaff 100%);
+  box-shadow: 0 4px 16px rgba(0,123,255,0.18);
+}
+
+@media (max-width: 500px) {
+  .captcha-modal-box {
+    min-width: 0;
+    padding: 18px 6vw 18px 6vw;
   }
 }

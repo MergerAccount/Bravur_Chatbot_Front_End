@@ -1,5 +1,5 @@
 <!-- Embedded Template: static/templates/embedded.html -->
-<div class="bravur-chatbot-embedded">
+<div class="bravur-chatbot-embedded" data-session-id="">
     <div class="chat-container">
         <h1>Bravur AI Chatbot</h1>
         <div class="chat-header"></div>
@@ -19,7 +19,8 @@
         <!-- Consent Chat Bubble -->
         <div id="consent-bubble" class="consent-bubble" style="display: none;">
             <div class="consent-message">
-                <p>We use cookies and collect data to improve your experience. Please accept to continue using the chatbot.</p>
+                <p>We use cookies and collect data to improve your experience. Please accept to continue using the
+                    chatbot.</p>
                 <button id="accept-consent-btn" class="accept-consent-btn">Accept</button>
             </div>
         </div>
@@ -33,11 +34,11 @@
 
         <div class="session-info">Session ID: <span id="session-id">Loading...</span></div>
         <div class="consent-status" id="consent-status"></div>
-        
+
         <div class="show-feedback-btn" id="show-feedback-btn" style="display: none;">
             <button onclick="showFeedback()">Give Feedback</button>
         </div>
-        
+
         <div class="feedback-container" id="feedback-container" style="display: none;">
             <h3>Rate your experience</h3>
             <div class="smiley-row" id="smiley-row">
