@@ -537,41 +537,205 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    async function handleVoiceInput() {
-        if (isListening) {
-            stopSpeechRecognition();
-            return;
-        }
-
-        isListening = true;
-        const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
-        voiceChatBtn.textContent = "🎙️ Listening...";
-        voiceChatBtn.classList.add("listening");
-
-        console.log("Using language for speech recognition:", selectedLanguage);
-
-        try {
-            const response = await makeWordPressAPICall('stt', {
-                language: selectedLanguage
-            });
-
-            if (response.success && response.data.status === "success" && response.data.text) {
-                document.querySelector('.bravur-chatbot-widget #user-input').value = response.data.text;
-
-                setTimeout(function () {
-                    sendMessage();
-                }, 500);
-            } else {
-                console.error("Speech recognition failed:", response.data ? response.data.message : "Unknown error");
-                alert("Speech recognition failed: " + (response.data ? response.data.message : "Unknown error"));
-            }
-        } catch (error) {
-            console.error("Speech recognition error:", error);
-            alert("Speech recognition error. Please try again.");
-        } finally {
-            stopSpeechRecognition();
-        }
+ async function handleVoiceInput() {
+    if (isListening) {
+        stopSpeechRecognition();
+        return;
     }
+
+    // Check if voice input is supported
+    if (!isVoiceInputSupported()) {
+        alert("Voice input is not supported in your browser or requires HTTPS. Please use a modern browser with HTTPS or type your message instead.");
+        return;
+    }
+
+    isListening = true;
+    const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
+    voiceChatBtn.textContent = "🎙️ Listening...";
+    voiceChatBtn.classList.add("listening");
+
+    console.log("🎤 Starting voice input with language:", selectedLanguage);
+
+    try {
+        // Step 1: Get microphone access
+        console.log("🔍 Requesting microphone access...");
+        const stream = await getUserMediaCompat({ audio: true });
+        console.log("✅ Microphone access granted");
+        
+        // Step 2: Set up audio recording
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks = [];
+        
+        console.log("🎥 MediaRecorder created, MIME type:", mediaRecorder.mimeType);
+        
+        mediaRecorder.ondataavailable = function(event) {
+            console.log("📊 Audio chunk received, size:", event.data.size);
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = async function() {
+            console.log("🛑 Recording stopped");
+            
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+            
+            if (audioChunks.length === 0) {
+                console.error("❌ No audio chunks recorded");
+                alert("No audio was recorded. Please try again.");
+                stopSpeechRecognition();
+                return;
+            }
+            
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+            console.log("🎵 Audio blob created, size:", audioBlob.size, "type:", audioBlob.type);
+            
+            if (audioBlob.size === 0) {
+                console.error("❌ Audio blob is empty");
+                alert("Recorded audio is empty. Please try again.");
+                stopSpeechRecognition();
+                return;
+            }
+            
+            // Step 3: Send audio to backend
+            await sendAudioToSTT(audioBlob);
+        };
+        
+        // Step 4: Start recording
+        console.log("🔴 Starting recording...");
+        mediaRecorder.start();
+        
+        // Step 5: Stop after 5 seconds (you can adjust this or make it manual)
+        setTimeout(() => {
+            console.log("⏰ 5 seconds elapsed, stopping recording");
+            if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }, 5000);
+        
+    } catch (error) {
+        console.error("🚨 Voice input error:", error);
+        
+        if (error.name === 'NotAllowedError') {
+            alert("Microphone access denied. Please allow microphone access and try again.");
+        } else if (error.name === 'NotFoundError') {
+            alert("No microphone found. Please check your microphone and try again.");
+        } else if (error.name === 'NotSupportedError') {
+            alert("Audio recording is not supported in your browser. Please use a modern browser or HTTPS.");
+        } else {
+            alert("Voice input error: " + error.message);
+        }
+        
+        stopSpeechRecognition();
+    }
+}
+
+// Browser compatibility functions
+function isVoiceInputSupported() {
+    // Check if we have the required APIs
+    return !!(
+        (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ||
+        navigator.getUserMedia ||
+        navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia
+    ) && typeof MediaRecorder !== 'undefined';
+}
+
+function getUserMediaCompat(constraints) {
+    // Modern browsers
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        return navigator.mediaDevices.getUserMedia(constraints);
+    }
+    
+    // Fallback for older browsers
+    const getUserMedia = navigator.getUserMedia || 
+                        navigator.webkitGetUserMedia || 
+                        navigator.mozGetUserMedia;
+    
+    if (!getUserMedia) {
+        return Promise.reject(new Error('getUserMedia is not supported in this browser'));
+    }
+    
+    // Convert callback-based API to Promise
+    return new Promise((resolve, reject) => {
+        getUserMedia.call(navigator, constraints, resolve, reject);
+    });
+}
+
+async function sendAudioToSTT(audioBlob) {
+    console.log("📤 Sending audio to STT backend...");
+    console.log("📊 Audio details:", {
+        size: audioBlob.size,
+        type: audioBlob.type
+    });
+    
+    try {
+        // Create FormData with audio file
+        const formData = new FormData();
+        formData.append('action', 'bravur_api_proxy');
+        formData.append('api_action', 'stt');
+        formData.append('nonce', nonce);
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('data[session_id]', currentSessionId);
+        formData.append('data[language]', selectedLanguage);
+        
+        console.log("📋 FormData prepared for STT");
+        console.log("🌐 Making request to:", ajaxUrl);
+        
+        const response = await fetch(ajaxUrl, {
+            method: 'POST',
+            body: formData
+        });
+        
+        console.log("📡 STT Response received:", {
+            status: response.status,
+            statusText: response.statusText
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ HTTP Error Response:", errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log("📄 STT Parsed response:", result);
+        
+        if (result.success && result.data && result.data.status === "success" && result.data.text) {
+            console.log("✅ STT Success:", result.data.text);
+            
+            // Put the transcribed text in the input field
+            const userInput = document.querySelector('.bravur-chatbot-widget #user-input');
+            if (userInput) {
+                userInput.value = result.data.text;
+            }
+            
+            // Automatically send the message after a short delay
+            setTimeout(function () {
+                sendMessage();
+            }, 500);
+        } else {
+            console.error("❌ STT failed:", result);
+            const errorMsg = result.data ? result.data.message : "Unknown error";
+            alert("Speech recognition failed: " + errorMsg);
+        }
+        
+    } catch (error) {
+        console.error("🚨 STT Request error:", error);
+        alert("Speech recognition error: " + error.message);
+    } finally {
+        stopSpeechRecognition();
+    }
+}
+
+function stopSpeechRecognition() {
+    isListening = false;
+    const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
+    if (voiceChatBtn) {
+        voiceChatBtn.textContent = "🎤";
+        voiceChatBtn.classList.remove("listening");
+    }
+    console.log("🛑 Speech recognition stopped");
+}
 
     function stopSpeechRecognition() {
         isListening = false;
