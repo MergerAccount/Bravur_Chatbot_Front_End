@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Notify backend that captcha was solved (reset fingerprint/session rate limit)
                 if (window.bravurFingerprint && sessionId) {
-                    fetch('http://localhost:5001/api/v1/ratelimit/captcha-solved', {
+                    fetch('/api/v1/ratelimit/captcha-solved', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
