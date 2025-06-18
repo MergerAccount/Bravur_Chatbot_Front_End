@@ -698,38 +698,38 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function processRecording() {
-    const spinner = document.getElementById("spinner");
-    console.log("Processing recording");
+        const spinner = document.getElementById("spinner");
+        console.log("Processing recording");
 
-    try {
-        const audioBlob = new Blob(audioChunks);
+        try {
+            const audioBlob = new Blob(audioChunks);
 
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'input.webm');
+            // Create a FormData object for the audio file
+            const audioFormData = new FormData();
+            audioFormData.append('audio', audioBlob, 'input.webm');
 
-        console.log("Current session ID:", currentSessionId);
-        if (currentSessionId) {
-            formData.append('session_id', currentSessionId);
-            console.log("Session ID added to FormData:", currentSessionId);
-        } else {
-            console.error("WARNING: No session ID available!");
-        }
+            console.log("Current session ID:", currentSessionId);
+            
+            // Prepare data for makeWordPressAPICall
+            const requestData = {
+                session_id: currentSessionId,
+                language: selectedLanguage
+            };
 
-        formData.append('language', selectedLanguage);
-        console.log("Sending speech-to-speech request with language:", selectedLanguage);
+            console.log("Sending speech-to-speech request with language:", selectedLanguage);
 
-        spinner.style.display = "block";
+            spinner.style.display = "block";
 
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const placeholderMsg = document.createElement("p");
-            placeholderMsg.className = "message user-message";
-            placeholderMsg.id = "temp-user-message";
-            placeholderMsg.textContent = "Initializing microphone...";
-            document.getElementById("chat-box").appendChild(placeholderMsg);
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const placeholderMsg = document.createElement("p");
+                placeholderMsg.className = "message user-message";
+                placeholderMsg.id = "temp-user-message";
+                placeholderMsg.textContent = "Initializing microphone...";
+                document.getElementById("chat-box").appendChild(placeholderMsg);
 
-            showThinkingIndicator();
+                showThinkingIndicator();
 
-             setTimeout(() => {
+                setTimeout(() => {
                     const tempMsg = document.getElementById("temp-user-message");
                     if (tempMsg) {
                         tempMsg.textContent = "Speak now...";
@@ -737,47 +737,84 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, 3000);
             }
 
-        const response = await fetch('/api/v1/sts', {
-            method: 'POST',
-            body: formData
-        });
+            // Use makeWordPressAPICall but we need to modify it for file upload
+            // Create FormData manually for this special case
+            const formData = new FormData();
+            formData.append('action', 'bravur_api_proxy');
+            formData.append('api_action', 'sts'); // speech-to-speech action
+            formData.append('nonce', nonce);
+            formData.append('audio', audioBlob, 'input.webm'); // Add the audio file
+            
+            // Add other data
+            Object.keys(requestData).forEach(function (key) {
+                formData.append('data[' + key + ']', requestData[key]);
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        hideThinkingIndicator();
-        spinner.style.display = "none";
-
-        const tempUserMsg = document.getElementById("temp-user-message");
-        if (tempUserMsg) {
-            tempUserMsg.textContent = data.user_text;
-            tempUserMsg.id = "";
-        } else {
-            const userMsg = document.createElement("p");
-            userMsg.className = "message user-message";
-            userMsg.textContent = data.user_text;
-            document.getElementById("chat-box").appendChild(userMsg);
-        }
-
-        const container = document.createElement("div");
-        container.className = "bot-message-container";
-
-        const botMsg = document.createElement("p");
-        botMsg.className = "message bot-message";
-        botMsg.textContent = data.bot_text;
-
-        const speakButton = document.createElement("button");
-        speakButton.className = "speak-btn";
-        speakButton.innerHTML = "🔊";
-        speakButton.onclick = () => {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
+            // Add fingerprint if present
+            if (bravurFingerprint) {
+                formData.append('data[fingerprint]', bravurFingerprint);
             }
+
+            const response = await fetch(ajaxUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            hideThinkingIndicator();
+            spinner.style.display = "none";
+
+            const tempUserMsg = document.getElementById("temp-user-message");
+            if (tempUserMsg) {
+                tempUserMsg.textContent = data.user_text;
+                tempUserMsg.id = "";
+            } else {
+                const userMsg = document.createElement("p");
+                userMsg.className = "message user-message";
+                userMsg.textContent = data.user_text;
+                document.getElementById("chat-box").appendChild(userMsg);
+            }
+
+            const container = document.createElement("div");
+            container.className = "bot-message-container";
+
+            const botMsg = document.createElement("p");
+            botMsg.className = "message bot-message";
+            botMsg.textContent = data.bot_text;
+
+            const speakButton = document.createElement("button");
+            speakButton.className = "speak-btn";
+            speakButton.innerHTML = "🔊";
+            speakButton.onclick = () => {
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                }
+
+                if (data.audio_base64) {
+                    const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+                    const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                    const audioUrl = URL.createObjectURL(audioResponseBlob);
+                    currentAudio = new Audio(audioUrl);
+                    currentAudio.play();
+
+                    currentAudio.onended = function() {
+                        URL.revokeObjectURL(audioUrl);
+                    };
+                }
+            };
+
+            container.appendChild(botMsg);
+            container.appendChild(speakButton);
+            document.getElementById("chat-box").appendChild(container);
+
+            document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
 
             if (data.audio_base64) {
                 const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
@@ -790,44 +827,25 @@ document.addEventListener("DOMContentLoaded", function () {
                     URL.revokeObjectURL(audioUrl);
                 };
             }
-        };
 
-        container.appendChild(botMsg);
-        container.appendChild(speakButton);
-        document.getElementById("chat-box").appendChild(container);
+        } catch (error) {
+            spinner.style.display = "none";
+            hideThinkingIndicator();
+            console.error("Error processing speech-to-speech:", error);
 
-        document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+            const tempUserMsg = document.getElementById("temp-user-message");
+            if (tempUserMsg) {
+                tempUserMsg.remove();
+            }
 
-        if (data.audio_base64) {
-            const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
-            const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
-            const audioUrl = URL.createObjectURL(audioResponseBlob);
-            currentAudio = new Audio(audioUrl);
-            currentAudio.play();
-
-            currentAudio.onended = function() {
-                URL.revokeObjectURL(audioUrl);
-            };
+            const errorMsg = document.createElement("p");
+            errorMsg.className = "message system-message";
+            errorMsg.textContent = "Sorry, there was an error processing your speech. Please try again.";
+            document.getElementById("chat-box").appendChild(errorMsg);
+        } finally {
+            resetUI();
         }
-
-    } catch (error) {
-        spinner.style.display = "none";
-        hideThinkingIndicator();
-        console.error("Error processing speech-to-speech:", error);
-
-        const tempUserMsg = document.getElementById("temp-user-message");
-        if (tempUserMsg) {
-            tempUserMsg.remove();
-        }
-
-        const errorMsg = document.createElement("p");
-        errorMsg.className = "message system-message";
-        errorMsg.textContent = "Sorry, there was an error processing your speech. Please try again.";
-        document.getElementById("chat-box").appendChild(errorMsg);
-    } finally {
-        resetUI();
     }
-}
 
     async function notifyLanguageChange(fromLang, toLang) {
         try {
