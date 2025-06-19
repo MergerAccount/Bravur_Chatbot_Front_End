@@ -575,15 +575,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function stopSpeechRecognition() {
         isListening = false;
-        const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
-        if (voiceChatBtn) {
-            voiceChatBtn.textContent = "🎤";
-            voiceChatBtn.classList.remove("listening");
+        const voiceChatBtn = document.getElementById("voice-chat-btn");
+        voiceChatBtn.textContent = "🎤";
+        voiceChatBtn.classList.remove("listening");
+
+        if (recognition) {
+            try {
+                recognition.stop();
+            } catch (e) {
+            }
         }
     }
 
+    const stsButton = document.getElementById("sts-btn");
+
+    stsButton.innerHTML = "🤖";
+    stsButton.title = "Use Voice Mode 🤖";
+
+    stsButton.addEventListener("click", handleStsButtonClick);
+
     function handleStsButtonClick() {
-        console.log("STS Button clicked, current state:", isRecording);
+        console.log("Button clicked, current state:", isRecording);
 
         if (!isRecording) {
             startRecordingProcess();
@@ -596,7 +608,6 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             console.log("Starting recording process");
 
-            const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
             stsButton.innerHTML = "Start Talking";
             stsButton.title = "Click to start/stop recording";
 
@@ -606,14 +617,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 mimeType: 'audio/webm'
             });
 
-            mediaRecorder.ondataavailable = function (event) {
+            mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
             };
 
             mediaRecorder.onstop = processRecording;
 
             audioChunks = [];
+
             mediaRecorder.start(100);
+
             isRecording = true;
 
             console.log("Recording started successfully");
@@ -622,7 +635,6 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Failed to start recording:", error);
 
             isRecording = false;
-            const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
             stsButton.innerHTML = "🤖";
             stsButton.title = "Use Voice Mode 🤖";
             stsButton.disabled = false;
@@ -630,10 +642,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const errorMsg = document.createElement("p");
             errorMsg.className = "message system-message";
             errorMsg.textContent = "Unable to access microphone. Please check your permissions and try again.";
-            const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
-            if (chatBox) {
-                chatBox.appendChild(errorMsg);
-            }
+            document.getElementById("chat-box").appendChild(errorMsg);
         }
     }
 
@@ -667,31 +676,83 @@ document.addEventListener("DOMContentLoaded", function () {
         mediaRecorder = null;
     }
 
+    // Helper function to show a thinking indicator
+    function showThinkingIndicator() {
+        hideThinkingIndicator();
+
+        const thinkingDiv = document.createElement("div");
+        thinkingDiv.id = "thinking-indicator";
+        thinkingDiv.className = "message bot-message thinking";
+        thinkingDiv.innerHTML = "<div class='thinking-dots'><span>.</span><span>.</span><span>.</span></div>";
+
+        const chatContainer = document.querySelector(".chat-container");
+        chatContainer.appendChild(thinkingDiv);
+    }
+
+
+    function hideThinkingIndicator() {
+        const thinkingDiv = document.getElementById("thinking-indicator");
+        if (thinkingDiv) {
+          thinkingDiv.remove();
+        }
+    }
+
     async function processRecording() {
-        const spinner = document.querySelector('.bravur-chatbot-widget #spinner');
+        const spinner = document.getElementById("spinner");
         console.log("Processing recording");
 
         try {
             const audioBlob = new Blob(audioChunks);
-            const formData = new FormData();
-            formData.append('action', 'bravur_api_proxy');
-            formData.append('api_action', 'sts');
-            formData.append('nonce', nonce);
-            formData.append('audio', audioBlob, 'input.webm');
-            formData.append('data[session_id]', currentSessionId);
-            formData.append('data[language]', selectedLanguage);
 
-            if (spinner) {
-                spinner.style.display = "block";
+            // Create a FormData object for the audio file
+            const audioFormData = new FormData();
+            audioFormData.append('audio', audioBlob, 'input.webm');
+
+            console.log("Current session ID:", currentSessionId);
+            
+            // Prepare data for makeWordPressAPICall
+            const requestData = {
+                session_id: currentSessionId,
+                language: selectedLanguage
+            };
+
+            console.log("Sending speech-to-speech request with language:", selectedLanguage);
+
+            spinner.style.display = "block";
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const placeholderMsg = document.createElement("p");
+                placeholderMsg.className = "message user-message";
+                placeholderMsg.id = "temp-user-message";
+                placeholderMsg.textContent = "Initializing microphone...";
+                document.getElementById("chat-box").appendChild(placeholderMsg);
+
+                showThinkingIndicator();
+
+                setTimeout(() => {
+                    const tempMsg = document.getElementById("temp-user-message");
+                    if (tempMsg) {
+                        tempMsg.textContent = "Speak now...";
+                    }
+                }, 3000);
             }
 
-            const placeholderMsg = document.createElement("p");
-            placeholderMsg.className = "message user-message";
-            placeholderMsg.id = "temp-user-message";
-            placeholderMsg.textContent = "Processing speech...";
-            const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
-            if (chatBox) {
-                chatBox.appendChild(placeholderMsg);
+            // Use makeWordPressAPICall but we need to modify it for file upload
+            // Create FormData manually for this special case
+            const formData = new FormData();
+            formData.append('action', 'bravur_api_proxy');
+            formData.append('api_action', 'sts'); // speech-to-speech action
+            formData.append('nonce', nonce);
+            formData.append('audio', audioBlob, 'input.webm'); // Add the audio file
+            
+            // Add other data
+            Object.keys(requestData).forEach(function (key) {
+                formData.append('data[' + key + ']', requestData[key]);
+            });
+
+            // Add fingerprint if present
+            if (bravurFingerprint) {
+                formData.append('data[fingerprint]', bravurFingerprint);
             }
 
             const response = await fetch(ajaxUrl, {
@@ -700,25 +761,24 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             if (!response.ok) {
-                throw new Error('Server responded with status: ' + response.status);
+                const errorData = await response.json();
+                throw new Error(`Server responded with status: ${response.status}`);
             }
 
-            const result = await response.json();
+            const data = await response.json();
 
-            if (!result.success) {
-                throw new Error(result.data ? result.data.message : 'STS request failed');
-            }
-
-            const data = result.data;
-
-            if (spinner) {
-                spinner.style.display = "none";
-            }
+            hideThinkingIndicator();
+            spinner.style.display = "none";
 
             const tempUserMsg = document.getElementById("temp-user-message");
             if (tempUserMsg) {
                 tempUserMsg.textContent = data.user_text;
                 tempUserMsg.id = "";
+            } else {
+                const userMsg = document.createElement("p");
+                userMsg.className = "message user-message";
+                userMsg.textContent = data.user_text;
+                document.getElementById("chat-box").appendChild(userMsg);
             }
 
             const container = document.createElement("div");
@@ -731,32 +791,46 @@ document.addEventListener("DOMContentLoaded", function () {
             const speakButton = document.createElement("button");
             speakButton.className = "speak-btn";
             speakButton.innerHTML = "🔊";
-            speakButton.onclick = function () {
+            speakButton.onclick = () => {
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
                 }
 
                 if (data.audio_base64) {
-                    playAudioFromBase64(data.audio_base64);
+                    const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+                    const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                    const audioUrl = URL.createObjectURL(audioResponseBlob);
+                    currentAudio = new Audio(audioUrl);
+                    currentAudio.play();
+
+                    currentAudio.onended = function() {
+                        URL.revokeObjectURL(audioUrl);
+                    };
                 }
             };
 
             container.appendChild(botMsg);
             container.appendChild(speakButton);
-            if (chatBox) {
-                chatBox.appendChild(container);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
+            document.getElementById("chat-box").appendChild(container);
+
+            document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
 
             if (data.audio_base64) {
-                playAudioFromBase64(data.audio_base64);
+                const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+                const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                const audioUrl = URL.createObjectURL(audioResponseBlob);
+                currentAudio = new Audio(audioUrl);
+                currentAudio.play();
+
+                currentAudio.onended = function() {
+                    URL.revokeObjectURL(audioUrl);
+                };
             }
 
         } catch (error) {
-            if (spinner) {
-                spinner.style.display = "none";
-            }
+            spinner.style.display = "none";
+            hideThinkingIndicator();
             console.error("Error processing speech-to-speech:", error);
 
             const tempUserMsg = document.getElementById("temp-user-message");
@@ -767,10 +841,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const errorMsg = document.createElement("p");
             errorMsg.className = "message system-message";
             errorMsg.textContent = "Sorry, there was an error processing your speech. Please try again.";
-            const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
-            if (chatBox) {
-                chatBox.appendChild(errorMsg);
-            }
+            document.getElementById("chat-box").appendChild(errorMsg);
         } finally {
             resetUI();
         }
