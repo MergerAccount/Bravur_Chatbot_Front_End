@@ -7,12 +7,30 @@ let audioStream = null;
 let mediaRecorder = null;
 let audioChunks = [];
 let bravurFingerprint = null;
+let recognition = null;
 
 document.addEventListener("DOMContentLoaded", function () {
     console.log(" Bravur Chatbot WordPress script loaded");
     console.log(" Checking for potential conflicts...");
     console.log(" jQuery version:", typeof $ !== 'undefined' ? $.fn.jquery : 'Not loaded');
     console.log(" Other chatbots:", document.querySelectorAll('[id*="chat"], [class*="chat"]').length);
+
+    // Check browser compatibility
+    const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const hasSpeechRecognition = !!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+    
+    console.log("Browser compatibility:", {
+        mediaDevices: hasMediaDevices,
+        speechRecognition: hasSpeechRecognition
+    });
+
+    // Disable voice features if not supported
+    if (!hasMediaDevices) {
+        const voiceBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
+        const stsBtn = document.querySelector('.bravur-chatbot-widget #sts-btn');
+        if (voiceBtn) voiceBtn.style.display = 'none';
+        if (stsBtn) stsBtn.style.display = 'none';
+    }
 
     // Get WordPress localized variables SAFELY
     if (typeof bravurChatbot === 'undefined') {
@@ -484,10 +502,60 @@ document.addEventListener("DOMContentLoaded", function () {
                 botMsg.className = "message bot-message";
                 botMsg.textContent = response.data.response;
 
-                var speakButton = document.createElement("button");
+                const speakButton = document.createElement("button");
                 speakButton.className = "speak-btn";
                 speakButton.innerHTML = "🔊";
-                speakButton.onclick = function () { speakText(botMsg.textContent); };
+
+                let audioUrl = null;
+                let audioState = "idle"; // idle, playing, paused
+
+                speakButton.onclick = function () {
+                    if (!currentAudio || currentAudio.src !== audioUrl) {
+                        // If no audio or a different audio, create new
+                        if (currentAudio) {
+                            currentAudio.pause();
+                            currentAudio.currentTime = 0;
+                        }
+                        if (response.data.audio_base64) {
+                            const audioBytes = Uint8Array.from(atob(response.data.audio_base64), c => c.charCodeAt(0));
+                            const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                            audioUrl = URL.createObjectURL(audioResponseBlob);
+                            currentAudio = new Audio(audioUrl);
+                        } else {
+                            return;
+                        }
+                        currentAudio.onended = function() {
+                            URL.revokeObjectURL(audioUrl);
+                            speakButton.innerHTML = "🔊";
+                            audioState = "idle";
+                        };
+                        currentAudio.onpause = function() {
+                            if (!currentAudio.ended && currentAudio.currentTime > 0) {
+                                speakButton.innerHTML = "▶️";
+                                audioState = "paused";
+                            }
+                        };
+                        currentAudio.onplay = function() {
+                            speakButton.innerHTML = "⏸️";
+                            audioState = "playing";
+                        };
+                        currentAudio.play();
+                        speakButton.innerHTML = "⏸️";
+                        audioState = "playing";
+                    } else if (audioState === "playing") {
+                        currentAudio.pause();
+                        // onpause handler will update icon
+                    } else if (audioState === "paused") {
+                        currentAudio.play();
+                        // onplay handler will update icon
+                    } else {
+                        // If idle, play again
+                        currentAudio.currentTime = 0;
+                        currentAudio.play();
+                        speakButton.innerHTML = "⏸️";
+                        audioState = "playing";
+                    }
+                };
 
                 container.appendChild(botMsg);
                 container.appendChild(speakButton);
@@ -545,19 +613,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
         isListening = true;
         const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
-        voiceChatBtn.textContent = "🎙️ Listening...";
-        voiceChatBtn.classList.add("listening");
+        if (voiceChatBtn) {
+            voiceChatBtn.textContent = "🎙️ Listening...";
+            voiceChatBtn.classList.add("listening");
+        }
 
         console.log("Using language for speech recognition:", selectedLanguage);
 
         try {
+            // Check if speech recognition is supported
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                throw new Error("Speech recognition not supported in this browser");
+            }
+
             const response = await makeWordPressAPICall('stt', {
                 language: selectedLanguage
             });
+            console.log('STT response:', response);
 
             if (response.success && response.data.status === "success" && response.data.text) {
-                document.querySelector('.bravur-chatbot-widget #user-input').value = response.data.text;
-
+                const userInput = document.querySelector('.bravur-chatbot-widget #user-input');
+                if (userInput) {
+                    userInput.value = response.data.text;
+                    console.log('Input box updated with:', response.data.text);
+                }
+                // Show the transcribed text as a user message in the chat
+                const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
+                if (chatBox && response.data.text) {
+                    const userMsg = document.createElement("p");
+                    userMsg.className = "message user-message";
+                    userMsg.textContent = response.data.text;
+                    chatBox.appendChild(userMsg);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
                 setTimeout(function () {
                     sendMessage();
                 }, 500);
@@ -575,14 +663,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function stopSpeechRecognition() {
         isListening = false;
-        const voiceChatBtn = document.getElementById("voice-chat-btn");
-        voiceChatBtn.textContent = "🎤";
-        voiceChatBtn.classList.remove("listening");
+        const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
+        if (voiceChatBtn) {
+            voiceChatBtn.textContent = "🎤";
+            voiceChatBtn.classList.remove("listening");
+        }
 
         if (recognition) {
             try {
                 recognition.stop();
             } catch (e) {
+                console.warn("Error stopping recognition:", e);
             }
         }
     }
@@ -608,71 +699,114 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             console.log("Starting recording process");
 
-            stsButton.innerHTML = "Start Talking";
-            stsButton.title = "Click to start/stop recording";
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error("Media devices not supported in this browser");
+            }
+
+            const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
+            if (stsButton) {
+                stsButton.innerHTML = "Stop Recording";
+                stsButton.title = "Stop Recording";
+                stsButton.style.backgroundColor = "#e53935"; // red
+                stsButton.style.color = "#fff";
+                stsButton.disabled = false;
+                stsButton.onclick = function(e) {
+                    e.preventDefault();
+                    stopRecordingProcess();
+                };
+            }
 
             audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
+            const supportedTypes = [
+                'audio/webm;codecs=opus',
+                'audio/webm;codecs=vorbis',
+                'audio/webm',
+                'audio/mp4',
+                'audio/wav'
+            ];
+
+            let selectedMimeType = null;
+            for (const mimeType of supportedTypes) {
+                if (MediaRecorder.isTypeSupported(mimeType)) {
+                    selectedMimeType = mimeType;
+                    console.log(`✅ Using MIME type: ${mimeType}`);
+                    break;
+                }
+            }
+
+            if (!selectedMimeType) {
+                throw new Error("No supported audio format found");
+            }
+
             mediaRecorder = new MediaRecorder(audioStream, {
-                mimeType: 'audio/webm'
+                mimeType: selectedMimeType,
+                audioBitsPerSecond: 128000
             });
 
             mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
             };
 
             mediaRecorder.onstop = processRecording;
+            mediaRecorder.onerror = (event) => {
+                console.error("MediaRecorder error:", event.error);
+                resetUI();
+            };
 
             audioChunks = [];
-
-            mediaRecorder.start(100);
+            mediaRecorder.start();
 
             isRecording = true;
-
-            console.log("Recording started successfully");
+            console.log("Recording started successfully with MIME type:", selectedMimeType);
 
         } catch (error) {
             console.error("Failed to start recording:", error);
 
             isRecording = false;
-            stsButton.innerHTML = "🤖";
-            stsButton.title = "Use Voice Mode 🤖";
-            stsButton.disabled = false;
+            const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
+            if (stsButton) {
+                stsButton.innerHTML = "🤖";
+                stsButton.title = "Use Voice Mode 🤖";
+                stsButton.style.backgroundColor = "";
+                stsButton.style.color = "";
+                stsButton.disabled = false;
+                stsButton.onclick = handleStsButtonClick;
+            }
 
             const errorMsg = document.createElement("p");
             errorMsg.className = "message system-message";
             errorMsg.textContent = "Unable to access microphone. Please check your permissions and try again.";
-            document.getElementById("chat-box").appendChild(errorMsg);
+            const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
+            if (chatBox) {
+                chatBox.appendChild(errorMsg);
+            }
         }
     }
 
     function stopRecordingProcess() {
-        console.log("Stopping recording process");
-
         if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
-        } else {
-            resetUI();
         }
     }
 
     function resetUI() {
-        console.log("Resetting UI");
-
         isRecording = false;
-
         const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
         if (stsButton) {
             stsButton.innerHTML = "🤖";
             stsButton.title = "Use Voice Mode 🤖";
+            stsButton.style.backgroundColor = "";
+            stsButton.style.color = "";
             stsButton.disabled = false;
+            stsButton.onclick = handleStsButtonClick;
         }
-
         if (audioStream) {
             audioStream.getTracks().forEach(function (track) { track.stop(); });
             audioStream = null;
         }
-
         mediaRecorder = null;
     }
 
@@ -685,8 +819,10 @@ document.addEventListener("DOMContentLoaded", function () {
         thinkingDiv.className = "message bot-message thinking";
         thinkingDiv.innerHTML = "<div class='thinking-dots'><span>.</span><span>.</span><span>.</span></div>";
 
-        const chatContainer = document.querySelector(".chat-container");
-        chatContainer.appendChild(thinkingDiv);
+        const chatContainer = document.querySelector(".bravur-chatbot-widget .chat-container");
+        if (chatContainer) {
+            chatContainer.appendChild(thinkingDiv);
+        }
     }
 
 
@@ -698,61 +834,53 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function processRecording() {
-        const spinner = document.getElementById("spinner");
+        const spinner = document.querySelector('.bravur-chatbot-widget #spinner');
+        const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
         console.log("Processing recording");
 
         try {
-            const audioBlob = new Blob(audioChunks);
-
-            // Create a FormData object for the audio file
-            const audioFormData = new FormData();
-            audioFormData.append('audio', audioBlob, 'input.webm');
-
-            console.log("Current session ID:", currentSessionId);
-            
-            // Prepare data for makeWordPressAPICall
-            const requestData = {
-                session_id: currentSessionId,
-                language: selectedLanguage
-            };
-
-            console.log("Sending speech-to-speech request with language:", selectedLanguage);
-
-            spinner.style.display = "block";
-
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const placeholderMsg = document.createElement("p");
-                placeholderMsg.className = "message user-message";
-                placeholderMsg.id = "temp-user-message";
-                placeholderMsg.textContent = "Initializing microphone...";
-                document.getElementById("chat-box").appendChild(placeholderMsg);
-
-                showThinkingIndicator();
-
-                setTimeout(() => {
-                    const tempMsg = document.getElementById("temp-user-message");
-                    if (tempMsg) {
-                        tempMsg.textContent = "Speak now...";
-                    }
-                }, 3000);
+            // Safely determine MIME type
+            let mimeType = 'audio/webm;codecs=opus';
+            if (mediaRecorder && mediaRecorder.mimeType) {
+                mimeType = mediaRecorder.mimeType;
+            } else if (audioChunks.length > 0 && audioChunks[0].type) {
+                mimeType = audioChunks[0].type;
             }
 
-            // Use makeWordPressAPICall but we need to modify it for file upload
-            // Create FormData manually for this special case
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            console.log(`Audio blob created: ${audioBlob.size} bytes, type: ${mimeType}`);
+
+            // Validate blob size
+            if (audioBlob.size < 1000) {
+                throw new Error("Recording too short or empty");
+            }
+
+            // Create FormData
             const formData = new FormData();
             formData.append('action', 'bravur_api_proxy');
-            formData.append('api_action', 'sts'); // speech-to-speech action
+            formData.append('api_action', 'sts');
             formData.append('nonce', nonce);
-            formData.append('audio', audioBlob, 'input.webm'); // Add the audio file
+            formData.append('audio', audioBlob, 'input.webm');
+            formData.append('data[session_id]', currentSessionId);
+            formData.append('data[language]', selectedLanguage);
             
-            // Add other data
-            Object.keys(requestData).forEach(function (key) {
-                formData.append('data[' + key + ']', requestData[key]);
-            });
-
-            // Add fingerprint if present
             if (bravurFingerprint) {
                 formData.append('data[fingerprint]', bravurFingerprint);
+            }
+
+            console.log("Sending speech-to-speech request...");
+
+            if (spinner) {
+                spinner.style.display = "block";
+            }
+
+            // Show processing message
+            const placeholderMsg = document.createElement("p");
+            placeholderMsg.className = "message user-message";
+            placeholderMsg.id = "temp-user-message";
+            placeholderMsg.textContent = "Processing your voice...";
+            if (chatBox) {
+                chatBox.appendChild(placeholderMsg);
             }
 
             const response = await fetch(ajaxUrl, {
@@ -762,41 +890,93 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(`Server responded with status: ${response.status}`);
+                throw new Error(`Server error: ${response.status} - ${errorData.error || 'Unknown error'}`);
             }
 
             const data = await response.json();
+            console.log("STS response:", data);
 
-            hideThinkingIndicator();
-            spinner.style.display = "none";
-
-            const tempUserMsg = document.getElementById("temp-user-message");
-            if (tempUserMsg) {
-                tempUserMsg.textContent = data.user_text;
-                tempUserMsg.id = "";
-            } else {
-                const userMsg = document.createElement("p");
-                userMsg.className = "message user-message";
-                userMsg.textContent = data.user_text;
-                document.getElementById("chat-box").appendChild(userMsg);
+            // Hide spinner
+            if (spinner) {
+                spinner.style.display = "none";
             }
 
-            const container = document.createElement("div");
-            container.className = "bot-message-container";
+            // Update user message
+            const tempUserMsg = document.getElementById("temp-user-message");
+            if (tempUserMsg && data.user_text) {
+                tempUserMsg.textContent = data.user_text;
+                tempUserMsg.id = "";
+            }
 
-            const botMsg = document.createElement("p");
-            botMsg.className = "message bot-message";
-            botMsg.textContent = data.bot_text;
+            // Add bot response
+            if (data.bot_text && chatBox) {
+                const container = document.createElement("div");
+                container.className = "bot-message-container";
 
-            const speakButton = document.createElement("button");
-            speakButton.className = "speak-btn";
-            speakButton.innerHTML = "🔊";
-            speakButton.onclick = () => {
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio.currentTime = 0;
-                }
+                const botMsg = document.createElement("p");
+                botMsg.className = "message bot-message";
+                botMsg.textContent = data.bot_text;
 
+                const speakButton = document.createElement("button");
+                speakButton.className = "speak-btn";
+                speakButton.innerHTML = "🔊";
+
+                let audioUrl = null;
+                let audioState = "idle"; // idle, playing, paused
+
+                speakButton.onclick = function () {
+                    if (!currentAudio || currentAudio.src !== audioUrl) {
+                        // If no audio or a different audio, create new
+                        if (currentAudio) {
+                            currentAudio.pause();
+                            currentAudio.currentTime = 0;
+                        }
+                        if (data.audio_base64) {
+                            const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+                            const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                            audioUrl = URL.createObjectURL(audioResponseBlob);
+                            currentAudio = new Audio(audioUrl);
+                        } else {
+                            return;
+                        }
+                        currentAudio.onended = function() {
+                            URL.revokeObjectURL(audioUrl);
+                            speakButton.innerHTML = "🔊";
+                            audioState = "idle";
+                        };
+                        currentAudio.onpause = function() {
+                            if (!currentAudio.ended && currentAudio.currentTime > 0) {
+                                speakButton.innerHTML = "▶️";
+                                audioState = "paused";
+                            }
+                        };
+                        currentAudio.onplay = function() {
+                            speakButton.innerHTML = "⏸️";
+                            audioState = "playing";
+                        };
+                        currentAudio.play();
+                        speakButton.innerHTML = "⏸️";
+                        audioState = "playing";
+                    } else if (audioState === "playing") {
+                        currentAudio.pause();
+                        // onpause handler will update icon
+                    } else if (audioState === "paused") {
+                        currentAudio.play();
+                        // onplay handler will update icon
+                    } else {
+                        // If idle, play again
+                        currentAudio.currentTime = 0;
+                        currentAudio.play();
+                        speakButton.innerHTML = "⏸️";
+                        audioState = "playing";
+                    }
+                };
+
+                container.appendChild(botMsg);
+                container.appendChild(speakButton);
+                chatBox.appendChild(container);
+
+                // Auto-play response
                 if (data.audio_base64) {
                     const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
                     const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
@@ -808,30 +988,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         URL.revokeObjectURL(audioUrl);
                     };
                 }
-            };
+            }
 
-            container.appendChild(botMsg);
-            container.appendChild(speakButton);
-            document.getElementById("chat-box").appendChild(container);
-
-            document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
-
-            if (data.audio_base64) {
-                const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
-                const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
-                const audioUrl = URL.createObjectURL(audioResponseBlob);
-                currentAudio = new Audio(audioUrl);
-                currentAudio.play();
-
-                currentAudio.onended = function() {
-                    URL.revokeObjectURL(audioUrl);
-                };
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
             }
 
         } catch (error) {
-            spinner.style.display = "none";
-            hideThinkingIndicator();
             console.error("Error processing speech-to-speech:", error);
+
+            if (spinner) {
+                spinner.style.display = "none";
+            }
 
             const tempUserMsg = document.getElementById("temp-user-message");
             if (tempUserMsg) {
@@ -840,8 +1008,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const errorMsg = document.createElement("p");
             errorMsg.className = "message system-message";
-            errorMsg.textContent = "Sorry, there was an error processing your speech. Please try again.";
-            document.getElementById("chat-box").appendChild(errorMsg);
+            errorMsg.textContent = `Voice processing failed: ${error.message}`;
+            if (chatBox) {
+                chatBox.appendChild(errorMsg);
+            }
         } finally {
             resetUI();
         }
@@ -890,7 +1060,57 @@ document.addEventListener("DOMContentLoaded", function () {
                         const speakButton = document.createElement("button");
                         speakButton.className = "speak-btn";
                         speakButton.innerHTML = "🔊";
-                        speakButton.onclick = function () { speakText(msg.content); };
+
+                        let audioUrl = null;
+                        let audioState = "idle"; // idle, playing, paused
+
+                        speakButton.onclick = function () {
+                            if (!currentAudio || currentAudio.src !== audioUrl) {
+                                // If no audio or a different audio, create new
+                                if (currentAudio) {
+                                    currentAudio.pause();
+                                    currentAudio.currentTime = 0;
+                                }
+                                if (msg.content) {
+                                    const audioBytes = Uint8Array.from(atob(msg.content), c => c.charCodeAt(0));
+                                    const audioResponseBlob = new Blob([audioBytes], { type: "audio/wav" });
+                                    audioUrl = URL.createObjectURL(audioResponseBlob);
+                                    currentAudio = new Audio(audioUrl);
+                                } else {
+                                    return;
+                                }
+                                currentAudio.onended = function() {
+                                    URL.revokeObjectURL(audioUrl);
+                                    speakButton.innerHTML = "🔊";
+                                    audioState = "idle";
+                                };
+                                currentAudio.onpause = function() {
+                                    if (!currentAudio.ended && currentAudio.currentTime > 0) {
+                                        speakButton.innerHTML = "▶️";
+                                        audioState = "paused";
+                                    }
+                                };
+                                currentAudio.onplay = function() {
+                                    speakButton.innerHTML = "⏸️";
+                                    audioState = "playing";
+                                };
+                                currentAudio.play();
+                                speakButton.innerHTML = "⏸️";
+                                audioState = "playing";
+                            } else if (audioState === "playing") {
+                                currentAudio.pause();
+                                // onpause handler will update icon
+                            } else if (audioState === "paused") {
+                                currentAudio.play();
+                                // onplay handler will update icon
+                            } else {
+                                // If idle, play again
+                                currentAudio.currentTime = 0;
+                                currentAudio.play();
+                                speakButton.innerHTML = "⏸️";
+                                audioState = "playing";
+                            }
+                        };
 
                         container.appendChild(p);
                         container.appendChild(speakButton);
