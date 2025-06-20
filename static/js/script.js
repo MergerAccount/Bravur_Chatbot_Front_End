@@ -606,76 +606,233 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function handleVoiceInput() {
-        if (isListening) {
-            stopSpeechRecognition();
+        if (isRecording) {
+            stopRecordingProcess();
             return;
         }
 
-        isListening = true;
-        const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
-        if (voiceChatBtn) {
-            voiceChatBtn.textContent = "🎙️ Listening...";
-            voiceChatBtn.classList.add("listening");
-        }
-
-        console.log("Using language for speech recognition:", selectedLanguage);
-
         try {
-            // Check if speech recognition is supported
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                throw new Error("Speech recognition not supported in this browser");
+            console.log("Starting dictate recording process");
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error("Media devices not supported in this browser");
             }
 
-            const response = await makeWordPressAPICall('stt', {
-                language: selectedLanguage
+            const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
+            if (voiceChatBtn) {
+                voiceChatBtn.textContent = "🎙️ Recording...";
+                voiceChatBtn.title = "Stop Recording";
+                voiceChatBtn.style.backgroundColor = "#e53935"; // red
+                voiceChatBtn.style.color = "#fff";
+                voiceChatBtn.disabled = false;
+                voiceChatBtn.onclick = function(e) {
+                    e.preventDefault();
+                    stopRecordingProcess();
+                };
+            }
+
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            const supportedTypes = [
+                'audio/webm;codecs=opus',
+                'audio/webm;codecs=vorbis',
+                'audio/webm',
+                'audio/mp4',
+                'audio/wav'
+            ];
+
+            let selectedMimeType = null;
+            for (const mimeType of supportedTypes) {
+                if (MediaRecorder.isTypeSupported(mimeType)) {
+                    selectedMimeType = mimeType;
+                    console.log(`✅ Using MIME type: ${mimeType}`);
+                    break;
+                }
+            }
+
+            if (!selectedMimeType) {
+                throw new Error("No supported audio format found");
+            }
+
+            mediaRecorder = new MediaRecorder(audioStream, {
+                mimeType: selectedMimeType,
+                audioBitsPerSecond: 128000
             });
-            console.log('STT response:', response);
 
-            if (response.success && response.data.status === "success" && response.data.text) {
-                const userInput = document.querySelector('.bravur-chatbot-widget #user-input');
-                if (userInput) {
-                    userInput.value = response.data.text;
-                    console.log('Input box updated with:', response.data.text);
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
                 }
-                // Show the transcribed text as a user message in the chat
-                const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
-                if (chatBox && response.data.text) {
-                    const userMsg = document.createElement("p");
-                    userMsg.className = "message user-message";
-                    userMsg.textContent = response.data.text;
-                    chatBox.appendChild(userMsg);
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }
-                setTimeout(function () {
-                    sendMessage();
-                }, 500);
-            } else {
-                console.error("Speech recognition failed:", response.data ? response.data.message : "Unknown error");
-                alert("Speech recognition failed: " + (response.data ? response.data.message : "Unknown error"));
-            }
+            };
+
+            mediaRecorder.onstop = processDictateRecording;
+            mediaRecorder.onerror = (event) => {
+                console.error("MediaRecorder error:", event.error);
+                resetUI();
+            };
+
+            audioChunks = [];
+            mediaRecorder.start();
+
+            isRecording = true;
+            console.log("Dictate recording started successfully with MIME type:", selectedMimeType);
+
         } catch (error) {
-            console.error("Speech recognition error:", error);
-            alert("Speech recognition error. Please try again.");
-        } finally {
-            stopSpeechRecognition();
+            console.error("Failed to start dictate recording:", error);
+
+            isRecording = false;
+            const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
+            if (voiceChatBtn) {
+                voiceChatBtn.textContent = "🎤";
+                voiceChatBtn.title = "Dictate 🎤";
+                voiceChatBtn.style.backgroundColor = "";
+                voiceChatBtn.style.color = "";
+                voiceChatBtn.disabled = false;
+                voiceChatBtn.onclick = handleVoiceInput;
+            }
+
+            const errorMsg = document.createElement("p");
+            errorMsg.className = "message system-message";
+            errorMsg.textContent = "Unable to access microphone. Please check your permissions and try again.";
+            const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
+            if (chatBox) {
+                chatBox.appendChild(errorMsg);
+            }
         }
     }
 
-    function stopSpeechRecognition() {
-        isListening = false;
+    async function processDictateRecording() {
+        const spinner = document.querySelector('.bravur-chatbot-widget #spinner');
+        const chatBox = document.querySelector('.bravur-chatbot-widget #chat-box');
+        console.log("Processing dictate recording");
+
+        try {
+            // Safely determine MIME type
+            let mimeType = 'audio/webm;codecs=opus';
+            if (mediaRecorder && mediaRecorder.mimeType) {
+                mimeType = mediaRecorder.mimeType;
+            } else if (audioChunks.length > 0 && audioChunks[0].type) {
+                mimeType = audioChunks[0].type;
+            }
+
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            console.log(`Audio blob created: ${audioBlob.size} bytes, type: ${mimeType}`);
+
+            // Validate blob size
+            if (audioBlob.size < 1000) {
+                throw new Error("Recording too short or empty");
+            }
+
+            // Create FormData
+            const formData = new FormData();
+            formData.append('action', 'bravur_api_proxy');
+            formData.append('api_action', 'sts');
+            formData.append('nonce', nonce);
+            formData.append('audio', audioBlob, 'input.webm');
+            formData.append('data[session_id]', currentSessionId);
+            formData.append('data[language]', selectedLanguage);
+            
+            if (bravurFingerprint) {
+                formData.append('data[fingerprint]', bravurFingerprint);
+            }
+
+            console.log("Sending dictate request...");
+
+            if (spinner) {
+                spinner.style.display = "block";
+            }
+
+            // Show processing message
+            const placeholderMsg = document.createElement("p");
+            placeholderMsg.className = "message user-message";
+            placeholderMsg.id = "temp-user-message";
+            placeholderMsg.textContent = "Processing your voice...";
+            if (chatBox) {
+                chatBox.appendChild(placeholderMsg);
+            }
+
+            const response = await fetch(ajaxUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Server error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+            }
+
+            const data = await response.json();
+            console.log("Dictate response:", data);
+
+            // Hide spinner
+            if (spinner) {
+                spinner.style.display = "none";
+            }
+
+            // Update user message
+            const tempUserMsg = document.getElementById("temp-user-message");
+            if (tempUserMsg && data.user_text) {
+                tempUserMsg.textContent = data.user_text;
+                tempUserMsg.id = "";
+            }
+
+            // Add bot response (TEXT ONLY, NO AUDIO)
+            if (data.bot_text && chatBox) {
+                const container = document.createElement("div");
+                container.className = "bot-message-container";
+
+                const botMsg = document.createElement("p");
+                botMsg.className = "message bot-message";
+                botMsg.textContent = data.bot_text;
+
+                // NO speak button - this is the key difference from STS
+                container.appendChild(botMsg);
+                chatBox.appendChild(container);
+            }
+
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+        } catch (error) {
+            console.error("Error processing dictate:", error);
+
+            if (spinner) {
+                spinner.style.display = "none";
+            }
+
+            const tempUserMsg = document.getElementById("temp-user-message");
+            if (tempUserMsg) {
+                tempUserMsg.remove();
+            }
+
+            const errorMsg = document.createElement("p");
+            errorMsg.className = "message system-message";
+            errorMsg.textContent = `Voice processing failed: ${error.message}`;
+            if (chatBox) {
+                chatBox.appendChild(errorMsg);
+            }
+        } finally {
+            resetUI();
+        }
+    }
+
+    function resetUI() {
+        isRecording = false;
         const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
         if (voiceChatBtn) {
             voiceChatBtn.textContent = "🎤";
-            voiceChatBtn.classList.remove("listening");
+            voiceChatBtn.title = "Dictate 🎤";
+            voiceChatBtn.style.backgroundColor = "";
+            voiceChatBtn.style.color = "";
+            voiceChatBtn.disabled = false;
+            voiceChatBtn.onclick = handleVoiceInput;
         }
-
-        if (recognition) {
-            try {
-                recognition.stop();
-            } catch (e) {
-                console.warn("Error stopping recognition:", e);
-            }
+        if (audioStream) {
+            audioStream.getTracks().forEach(function (track) { track.stop(); });
+            audioStream = null;
         }
+        mediaRecorder = null;
     }
 
     const stsButton = document.getElementById("sts-btn");
@@ -790,24 +947,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
         }
-    }
-
-    function resetUI() {
-        isRecording = false;
-        const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
-        if (stsButton) {
-            stsButton.innerHTML = "🤖";
-            stsButton.title = "Use Voice Mode 🤖";
-            stsButton.style.backgroundColor = "";
-            stsButton.style.color = "";
-            stsButton.disabled = false;
-            stsButton.onclick = handleStsButtonClick;
-        }
-        if (audioStream) {
-            audioStream.getTracks().forEach(function (track) { track.stop(); });
-            audioStream = null;
-        }
-        mediaRecorder = null;
     }
 
     // Helper function to show a thinking indicator
