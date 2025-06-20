@@ -819,6 +819,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function resetUI() {
         isRecording = false;
+
+        // Reset Dictate (voice input) button
         const voiceChatBtn = document.querySelector('.bravur-chatbot-widget #voice-chat-btn');
         if (voiceChatBtn) {
             voiceChatBtn.textContent = "🎤";
@@ -828,6 +830,18 @@ document.addEventListener("DOMContentLoaded", function () {
             voiceChatBtn.disabled = false;
             voiceChatBtn.onclick = handleVoiceInput;
         }
+
+        // Reset Voice Mode (voice mode) button
+        const stsButton = document.querySelector('.bravur-chatbot-widget #sts-btn');
+        if (stsButton) {
+            stsButton.innerHTML = "🤖";
+            stsButton.title = "Use Voice Mode 🤖";
+            stsButton.style.backgroundColor = "";
+            stsButton.style.color = "";
+            stsButton.disabled = false;
+            stsButton.onclick = handleStsButtonClick;
+        }
+
         if (audioStream) {
             audioStream.getTracks().forEach(function (track) { track.stop(); });
             audioStream = null;
