@@ -22,4 +22,4 @@ This WordPress plugin provides a simple frontend interface that connects to a Py
 
 2. Go to your Wordpress dashboard --> Plugins --> Activitate the Bravur Plugin
 
-3. The backend is running on a server, so you dont have to run it for the plugin to work. 
+3. The backend must be cloned and running from the backend repository, make sure to start the backend before using the plugin functionality.
